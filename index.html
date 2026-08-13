@@ -429,8 +429,10 @@
     </div>
     <div class="hint" style="margin-bottom:10px;">New customers get a 3-month trial automatically from the day they first open the app — you don't need to set a due date for them. Use the date field above only when renewing an existing customer (pick their new due date and click "Set/Extend" below) or if you want to override the trial length for someone.</div>
     <div class="hint" id="pcStatus" style="margin-bottom:10px;"></div>
+    <div class="hint" id="pcLinkResult" style="margin-bottom:10px;display:none;word-break:break-all;background:#f0f9f3;border:1px solid #cdeddb;border-radius:7px;padding:8px 10px;"></div>
     <div class="modal-actions" style="flex-direction:column;gap:8px;">
       <button class="btn btn-accent" id="pcSetLicenseBtn" style="width:100%;">☁ Set/Extend Due Date in License Firebase</button>
+      <button class="btn btn-outline" id="pcGetLinkBtn" style="width:100%;">🔗 Get Customer Link (if hosted at a URL)</button>
       <button class="btn btn-outline" id="pcDownloadBtn" style="width:100%;">⬇ Generate &amp; Download Customer File</button>
       <button class="btn btn-outline" id="pcViewAllBtn" style="width:100%;">📋 View / Renew All Customers</button>
     </div>
@@ -757,39 +759,60 @@
 (function(){
   "use strict";
 
-  var DATA_KEY = "cabletv_billing_data_v1";
-  var SETTINGS_KEY = "cabletv_billing_settings_v1";
-  var INVOICE_KEY = "cabletv_billing_invoice_seq_v1";
-  var CATEGORIES_KEY = "cabletv_billing_categories_v1";
-  var STAFF_KEY = "cabletv_billing_staff_v1";
-  var SYNC_CONFIG_KEY = "cabletv_billing_sync_config_v1";
-  var SESSION_KEY = "cabletv_billing_session_v1";
-  var ACTIVITY_KEY = "cabletv_billing_activity_v1";
-  var LANG_KEY = "cabletv_billing_lang_v1";
+  // License key must be resolved BEFORE any storage keys are built, since
+  // every piece of storage below is scoped by it. This is what keeps your
+  // own data and every customer's data completely separate — even though
+  // github.io hosts every repo under your username on the same origin,
+  // which would otherwise mean everything shares one pool of storage.
+  var SELLER_LICENSE_CONFIG = {"apiKey":"AIzaSyBLZs-3St52w3uRpGm9vd1VzlcpZVIbYKU","authDomain":"my-lco-lic.firebaseapp.com","databaseURL":"https://my-lco-lic-default-rtdb.firebaseio.com","projectId":"my-lco-lic","storageBucket":"my-lco-lic.firebasestorage.app","messagingSenderId":"281128961113","appId":"1:281128961113:web:afeb5e713a875acf705d48"}; // e.g. { apiKey:"...", databaseURL:"...", ... }
+  var LICENSE_KEY = ""; // e.g. "shivashankar-supreme-fiber" — or leave blank and use ?key= in the URL instead
+  try{
+    var urlLicenseKey = new URLSearchParams(window.location.search).get("key");
+    if(urlLicenseKey) LICENSE_KEY = urlLicenseKey;
+  }catch(e){}
+  // Empty for your own unrestricted use (keeps your existing data exactly
+  // where it already is), or "_<key>" for any link with ?key= in it — so
+  // your data, and every customer's data, each get their own private slot.
+  var STORAGE_SUFFIX = LICENSE_KEY ? ("_" + LICENSE_KEY.replace(/[^a-zA-Z0-9\-_]/g, "")) : "";
+
+  var DATA_KEY = "cabletv_billing_data_v1" + STORAGE_SUFFIX;
+  var SETTINGS_KEY = "cabletv_billing_settings_v1" + STORAGE_SUFFIX;
+  var INVOICE_KEY = "cabletv_billing_invoice_seq_v1" + STORAGE_SUFFIX;
+  var CATEGORIES_KEY = "cabletv_billing_categories_v1" + STORAGE_SUFFIX;
+  var STAFF_KEY = "cabletv_billing_staff_v1" + STORAGE_SUFFIX;
+  var SYNC_CONFIG_KEY = "cabletv_billing_sync_config_v1" + STORAGE_SUFFIX;
+  var SESSION_KEY = "cabletv_billing_session_v1" + STORAGE_SUFFIX;
+  var ACTIVITY_KEY = "cabletv_billing_activity_v1" + STORAGE_SUFFIX;
+  var LANG_KEY = "cabletv_billing_lang_v1" + STORAGE_SUFFIX;
 
   // ---------- AMC / License check (optional, off by default) ----------
   // This is SEPARATE from the shop's own Cloud Sync Firebase — it never touches
   // or reads any customer data. It only checks a renewal due-date, and it locks
   // the app (not just this shop's data — the app never touches customer data
   // either way) once that date plus a grace period has passed.
-  // To enable when packaging a copy for a paying customer:
-  //   1. Create your OWN small Firebase project (just for licenses, not shop data).
-  //   2. Fill in SELLER_LICENSE_CONFIG below with that project's config.
-  //   3. Set LICENSE_KEY to a unique id for this particular customer's copy.
-  // Leave LICENSE_KEY empty (as it is now) to disable this entirely — the app
-  // then behaves exactly as it does today, with no check of any kind.
+  //
+  // TWO WAYS TO USE THIS:
+  // A) Hosted (recommended if you host this file at a URL, e.g. GitHub Pages):
+  //    1. Create your OWN small Firebase project (just for licenses, not shop data).
+  //    2. Fill in SELLER_LICENSE_CONFIG below with that project's config, once.
+  //    3. Leave LICENSE_KEY below blank, and upload this one file as your site.
+  //    4. Give each customer a link like yoursite.com/?key=theirLicenseKey —
+  //       the ?key= in the URL becomes their license key automatically. Your
+  //       own daily-use link (no ?key=) stays completely unrestricted.
+  // B) Downloaded file per customer (if you send people a raw .html file):
+  //    Use "Prepare Customer Copy" > Generate & Download Customer File, which
+  //    bakes both SELLER_LICENSE_CONFIG and LICENSE_KEY directly into that copy.
+  //
   // You do NOT need to set a due date yourself for a new customer — the first
   // time their copy opens, it automatically records "trial started today" in
   // your license Firebase and gives them LICENSE_TRIAL_MONTHS from that date.
   // To renew someone, use "Prepare Customer Copy" > Set/Extend Due Date — no
-  // new file needed, their copy unlocks itself next time it's online.
-  var SELLER_LICENSE_CONFIG = null; // e.g. { apiKey:"...", databaseURL:"...", ... }
-  var LICENSE_KEY = ""; // e.g. "shivashankar-supreme-fiber"
+  // new file or link needed, their copy unlocks itself next time it's online.
   var LICENSE_TRIAL_MONTHS = 3;
   var LICENSE_GRACE_DAYS = 7;
-  var TRIAL_LOCAL_DUE_KEY = "cabletv_billing_trial_local_due_v1";
-  var TRIAL_LOCAL_CONTACT_KEY = "cabletv_billing_trial_local_contact_v1";
-  var TRIAL_LOCAL_PAYMENT_KEY = "cabletv_billing_trial_local_payment_v1";
+  var TRIAL_LOCAL_DUE_KEY = "cabletv_billing_trial_local_due_v1" + STORAGE_SUFFIX;
+  var TRIAL_LOCAL_CONTACT_KEY = "cabletv_billing_trial_local_contact_v1" + STORAGE_SUFFIX;
+  var TRIAL_LOCAL_PAYMENT_KEY = "cabletv_billing_trial_local_payment_v1" + STORAGE_SUFFIX;
 
   var DEFAULT_CATEGORIES = [
     { code:"U", max:200 },
@@ -2092,13 +2115,28 @@
       }
     }, function(){ status.textContent = "Couldn't load Firebase SDK — check your internet connection."; });
   });
+  document.getElementById("pcGetLinkBtn").addEventListener("click", function(){
+    var key = document.getElementById("pcLicenseKey").value.trim();
+    var resultEl = document.getElementById("pcLinkResult");
+    if(!key){ alert("Enter a license key for this customer first."); return; }
+    if(window.location.protocol !== "http:" && window.location.protocol !== "https:"){
+      alert("This only works when the app is opened from a hosted web link (like GitHub Pages) — not from a file opened directly on your device.");
+      return;
+    }
+    var baseUrl = window.location.origin + window.location.pathname;
+    var link = baseUrl + "?key=" + encodeURIComponent(key);
+    resultEl.style.display = "";
+    resultEl.innerHTML = "🔗 <b>" + escapeHtml(link) + "</b><br><span style='color:var(--muted);font-weight:400;'>Send this link to the customer. Make sure your own License Firebase Config above is also saved into this hosted file (use Generate &amp; Download once, then upload that file as your site's main file) — otherwise this link won't check licenses correctly.</span>";
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(link).catch(function(){});
+    }
+  });
   document.getElementById("pcDownloadBtn").addEventListener("click", function(){
     var status = document.getElementById("pcStatus");
     var configRaw = document.getElementById("pcLicenseConfig").value.trim();
     var config = pcParseConfig();
     var key = document.getElementById("pcLicenseKey").value.trim();
     if(!config){ status.textContent = "Couldn't read the Firebase config — paste the whole config block."; return; }
-    if(!key){ status.textContent = "Enter a license key for this customer."; return; }
     try{ localStorage.setItem(PC_CONFIG_KEY, configRaw); }catch(e){}
     status.textContent = "Preparing file...";
     fetch(window.location.href).then(function(r){ return r.text(); }).then(function(sourceHtml){
@@ -2114,12 +2152,14 @@
       var url = URL.createObjectURL(blob);
       var a = document.createElement("a");
       a.href = url;
-      a.download = key.replace(/[^a-z0-9\-]+/gi, "-") + "-billing-app.html";
+      a.download = key ? (key.replace(/[^a-z0-9\-]+/gi, "-") + "-billing-app.html") : "master-hosted-billing-app.html";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      status.textContent = "✓ Downloaded — this file is ready to send to the customer.";
+      status.textContent = key
+        ? "✓ Downloaded — this file is ready to send to the customer."
+        : "✓ Downloaded — this is your master hosted copy (no fixed key). Upload it as your site's main file, then use \"Get Customer Link\" above to make each customer's link.";
     }).catch(function(){
       status.textContent = "Couldn't fetch this file's own source (this can happen if it's opened as a local file rather than a web page). Download it manually and edit SELLER_LICENSE_CONFIG / LICENSE_KEY yourself instead.";
     });
