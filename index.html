@@ -107,8 +107,41 @@
 
   .overlay{position:fixed;inset:0;background:rgba(15,25,35,.55);display:none;align-items:flex-start;justify-content:center;z-index:100;padding:30px 16px;overflow-y:auto;}
   .overlay.show{display:flex;}
-  .modal{background:#fff;border-radius:12px;width:100%;max-width:460px;padding:20px 22px 22px;box-shadow:0 20px 50px rgba(0,0,0,.3);position:relative;}
+  .modal{background:#fff;border-radius:12px;width:100%;max-width:460px;padding:20px 22px 22px;box-shadow:0 20px 50px rgba(0,0,0,.3);position:relative;
+    transform:scale(.82);opacity:0;transition:transform .2s cubic-bezier(.2,.8,.2,1), opacity .16s ease;}
+  .overlay.show .modal{transform:scale(1);opacity:1;}
   .modal.wide{max-width:560px;}
+
+  /* Search results appear IN FRONT of the search box, not pushed below the fold */
+  .search-wrap{position:relative;}
+  .search-results-dd{
+    position:absolute; left:0; right:0; top:calc(100% + 6px);
+    background:#fff; border:1px solid #d3dae1; border-radius:11px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35); max-height:340px; overflow-y:auto; z-index:500;
+    opacity:0; transform:translateY(-6px); pointer-events:none;
+    transition:opacity .15s ease, transform .15s ease;
+  }
+  .search-results-dd.show{opacity:1; transform:translateY(0); pointer-events:auto;}
+  .srd-row{display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; border-bottom:1px solid #eef1f4;}
+  .srd-row:last-child{border-bottom:none;}
+  .srd-row:hover{background:#f6f8fa;}
+  .srd-dot{width:10px;height:10px;border-radius:50%;flex:none;}
+  .srd-dot.status-paid{background:var(--paid);}
+  .srd-dot.status-unpaid{background:var(--unpaid);}
+  .srd-dot.status-suspended{background:var(--suspended);}
+  .srd-name{font-size:13.5px;font-weight:700;color:var(--ink);}
+  .srd-sub{font-size:11.5px;color:var(--muted);}
+  .srd-badge{margin-left:auto;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;color:#fff;flex:none;}
+  .srd-badge.status-paid{background:var(--paid);}
+  .srd-badge.status-unpaid{background:var(--unpaid);}
+  .srd-badge.status-suspended{background:var(--suspended);color:#3a2c02;}
+  .srd-empty{padding:14px 12px;font-size:12.5px;color:var(--muted);text-align:center;}
+  .srd-more{padding:8px 12px;font-size:11.5px;color:var(--muted);text-align:center;border-top:1px solid #eef1f4;}
+  .zoom-nav-arrow{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;
+    background:#0f2a3f;border:1px solid rgba(255,255,255,.25);color:#fff;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;z-index:20;}
+  .zoom-nav-arrow:hover{background:#16405e;}
+  .zoom-nav-arrow:disabled{opacity:.35;cursor:default;}
   .modal h2{margin:0 0 4px;font-size:18px;color:var(--navy);}
   .modal .sub{font-size:12.5px;color:var(--muted);margin-bottom:16px;}
   .field{margin-bottom:12px;}
@@ -196,10 +229,13 @@
     </div>
   </div>
   <div class="top-actions">
-    <div class="searchbox">
-      <span>🔍</span>
-      <input id="searchInput" placeholder="Search name, mobile or box no..." />
-      <button class="mic-btn" id="searchMicBtn" title="Voice search">🎤</button>
+    <div class="search-wrap">
+      <div class="searchbox">
+        <span>🔍</span>
+        <input id="searchInput" placeholder="Search name, mobile or box no..." autocomplete="off" />
+        <button class="mic-btn" id="searchMicBtn" title="Voice search">🎤</button>
+      </div>
+      <div class="search-results-dd" id="searchResultsDd"></div>
     </div>
     <div class="lang-toggle">
       <button id="langEnBtn" class="on">EN</button>
@@ -258,7 +294,11 @@
   <div class="modal">
     <button class="close-x" data-close="customerOverlay">✕</button>
     <h2 id="custModalTitle">Add Customer</h2>
-    <div class="sub" id="custModalSub">Box —</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px;">
+      <button class="btn btn-sm btn-outline" id="custPrevBtn" title="Previous box">◀</button>
+      <div class="sub" id="custModalSub" style="margin-bottom:0;">Box —</div>
+      <button class="btn btn-sm btn-outline" id="custNextBtn" title="Next box">▶</button>
+    </div>
 
     <div class="field">
       <label id="lblName">Customer Name</label>
@@ -331,7 +371,8 @@
 
     <div class="modal-actions">
       <button class="btn btn-outline" id="deleteCustBtn">🗑 Remove</button>
-      <button class="btn btn-paid" id="billFromModalBtn" style="display:none;">🧾 Generate Bill</button>
+      <button class="btn btn-paid" id="markPaidFromModalBtn" style="display:none;">✓ Mark Paid</button>
+      <button class="btn btn-accent" id="billFromModalBtn" style="display:none;">🧾 Generate Bill</button>
       <button class="btn btn-accent" id="saveCustBtn">Save Customer</button>
     </div>
   </div>
@@ -715,13 +756,16 @@
   </div>
 </div>
 
-<!-- User Manual -->
+<!-- User Manual — colorful flip-book style -->
 <div class="overlay" id="manualOverlay">
-  <div class="modal wide">
-    <button class="close-x" data-close="manualOverlay">✕</button>
-    <h2 id="manualTitle">User Manual</h2>
-    <div class="sub" id="manualSub">How to use this app</div>
-    <div id="manualBody" style="max-height:520px;overflow-y:auto;line-height:1.55;font-size:13.5px;"></div>
+  <div class="modal" style="max-width:440px;padding:0;overflow:hidden;border-radius:18px;">
+    <button class="close-x" data-close="manualOverlay" style="z-index:10;background:rgba(255,255,255,.85);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;">✕</button>
+    <div id="manualBookViewport" style="min-height:480px;position:relative;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#fff;border-top:1px solid #eee;">
+      <button class="btn btn-outline btn-sm" id="manualPrevBtn">← Prev</button>
+      <div id="manualDots" style="display:flex;gap:5px;"></div>
+      <button class="btn btn-accent btn-sm" id="manualNextBtn">Next →</button>
+    </div>
   </div>
 </div>
 
@@ -764,7 +808,7 @@
   // own data and every customer's data completely separate — even though
   // github.io hosts every repo under your username on the same origin,
   // which would otherwise mean everything shares one pool of storage.
-  var SELLER_LICENSE_CONFIG = {"apiKey":"AIzaSyBLZs-3St52w3uRpGm9vd1VzlcpZVIbYKU","authDomain":"my-lco-lic.firebaseapp.com","databaseURL":"https://my-lco-lic-default-rtdb.firebaseio.com","projectId":"my-lco-lic","storageBucket":"my-lco-lic.firebasestorage.app","messagingSenderId":"281128961113","appId":"1:281128961113:web:afeb5e713a875acf705d48"}; // e.g. { apiKey:"...", databaseURL:"...", ... }
+  var SELLER_LICENSE_CONFIG = null; // e.g. { apiKey:"...", databaseURL:"...", ... }
   var LICENSE_KEY = ""; // e.g. "shivashankar-supreme-fiber" — or leave blank and use ?key= in the URL instead
   try{
     var urlLicenseKey = new URLSearchParams(window.location.search).get("key");
@@ -984,46 +1028,104 @@
     }
   };
 
-  var MANUAL_SECTIONS = {
-    en: [
-      { h:"Signing In", p:"Office signs in with the Office PIN (default 1234, change it in Shop Details) and can see and do everything. Staff sign in with their own name and PIN, and only see the lines (A, B, U, etc.) assigned to them." },
-      { h:"Adding a Customer", p:"Tap any empty grey box (marked +) to add a customer there. Fill in their name, mobile number, plan amount, and payment status, then Save Customer." },
-      { h:"Marking a Payment (Billing)", p:"Tap \"Mark Paid\" on a customer's box. Choose how many months they're paying for, confirm the amount and mode (Cash/UPI), then tap Cash or UPI to record it. This is the proper way to bill someone — it updates their due date and shows up correctly in Reports." },
-      { h:"Editing a Customer", p:"Tap anywhere on a customer's box to open their details, change any field, and Save. You'll also see their full Payment History here — every past payment, with date, amount, mode and who collected it." },
-      { h:"Sending a Bill", p:"Tap \"Bill\" on a customer's box to preview their receipt. From there you can Print it, Send on WhatsApp, Send SMS, or Share to a print app." },
-      { h:"Collection Report", p:"Tap 📊 Report to see totals, a Paid/Unpaid/Suspended chart, and a full list of every payment collected — filterable by date range (Today, Last 7 Days, etc.) and downloadable as a CSV file." },
-      { h:"Activity Log", p:"Tap 🕒 Activity to see a full history of every add, edit, removal, and payment made in the app, with who did it and when." },
-      { h:"Managing Staff", p:"(Office only) Tap 👤 Staff to add staff members, set their PIN, and choose which lines each one can see and bill." },
-      { h:"Managing Lines", p:"(Office only) Tap the ➕ next to your line tabs to add a new line (like a new B or C series) or change how many customer slots a line has." },
-      { h:"Cloud Sync", p:"(Office only) Tap ☁ Cloud Sync to connect your office computer and staff phones to the same live data, so everyone always sees up-to-date information. This needs a one-time Firebase setup — ask if you need help." },
-      { h:"Backup & Restore", p:"(Office only) Tap ⬇ Backup regularly to save a copy of all your data as a file. If anything ever goes wrong, use ⬆ Restore to bring it back." },
-      { h:"Adding This App to Your Home Screen", p:"On Android (Chrome): tap the ⋮ menu in the top-right of your browser, then \"Add to Home screen\" or \"Install app\". On iPhone (Safari): tap the Share icon, then \"Add to Home Screen\". Once added, it opens like a regular app, without the browser's address bar." }
-    ],
-    ta: [
-      { h:"உள்நுழைவது", p:"ஆஃபீஸ் தன் PIN-ஐ பயன்படுத்தி உள்நுழையலாம் (இயல்பு 1234, கடை விவரங்களில் மாற்றலாம்) — எல்லாவற்றையும் பார்க்க/செய்ய முடியும். ஊழியர்கள் தங்கள் பெயர் மற்றும் PIN மூலம் உள்நுழைந்து, தங்களுக்கு ஒதுக்கப்பட்ட வரிசைகளை (A, B, U போன்றவை) மட்டுமே பார்க்க முடியும்." },
-      { h:"வாடிக்கையாளரைச் சேர்ப்பது", p:"காலியான சாம்பல் நிற பாக்ஸை (+ குறியுடன்) தட்டி புதிய வாடிக்கையாளரைச் சேர்க்கவும். பெயர், மொபைல் எண், திட்ட தொகை, கட்டண நிலை பூர்த்தி செய்து Save Customer தட்டவும்." },
-      { h:"கட்டணம் வசூலிப்பது (பில்லிங்)", p:"வாடிக்கையாளர் பாக்ஸில் \"Mark Paid\" தட்டவும். எத்தனை மாதங்களுக்கு செலுத்துகிறார் என தேர்ந்தெடுத்து, தொகை மற்றும் முறையை (Cash/UPI) உறுதிசெய்து, Cash அல்லது UPI தட்டவும். இதுவே சரியான பில்லிங் முறை — இது அடுத்த செலுத்த வேண்டிய தேதியை புதுப்பித்து, அறிக்கையில் சரியாக காட்டும்." },
-      { h:"வாடிக்கையாளரைத் திருத்துவது", p:"வாடிக்கையாளர் பாக்ஸை தட்டி விவரங்களைத் திருத்தி Save செய்யலாம். இங்கே அவரின் முழு கட்டண வரலாறும் (தேதி, தொகை, முறை, யார் வசூலித்தார்) காணலாம்." },
-      { h:"பில் அனுப்புவது", p:"வாடிக்கையாளர் பாக்ஸில் \"Bill\" தட்டி ரசீதை பார்க்கலாம். அங்கிருந்து Print, WhatsApp, SMS, அல்லது வேறு பிரிண்ட் ஆப்பிற்கு பகிரலாம்." },
-      { h:"வசூல் அறிக்கை", p:"📊 Report தட்டி மொத்த வசூல், Paid/Unpaid/Suspended விவரம், மற்றும் ஒவ்வொரு கட்டணத்தின் முழு பட்டியலையும் காணலாம் — தேதி வாரியாக வடிகட்டி CSV ஆக பதிவிறக்கம் செய்யலாம்." },
-      { h:"செயல்பாட்டு பதிவு", p:"🕒 Activity தட்டி இந்த ஆப்பில் நடந்த ஒவ்வொரு சேர்த்தல், திருத்தம், நீக்கம், கட்டணம் ஆகியவற்றின் முழு பதிவையும் — யார், எப்போது செய்தார் என்பதுடன் காணலாம்." },
-      { h:"ஊழியர்களை நிர்வகிப்பது", p:"(ஆஃபீஸ் மட்டும்) 👤 Staff தட்டி ஊழியர்களைச் சேர்த்து, PIN அமைத்து, அவர்கள் பார்க்கக்கூடிய வரிசைகளை தேர்ந்தெடுக்கலாம்." },
-      { h:"வரிசைகளை நிர்வகிப்பது", p:"(ஆஃபீஸ் மட்டும்) வரிசை tab-களுக்கு அருகில் உள்ள ➕ தட்டி புதிய வரிசை (B, C போன்றவை) சேர்க்கலாம் அல்லது ஒரு வரிசையின் எண்ணிக்கையை மாற்றலாம்." },
-      { h:"கிளவுட் சின்க்", p:"(ஆஃபீஸ் மட்டும்) ☁ Cloud Sync தட்டி உங்கள் ஆஃபீஸ் கணினி மற்றும் ஊழியர் மொபைல்களை ஒரே நேரடி தரவுடன் இணைக்கலாம். இதற்கு ஒருமுறை Firebase அமைப்பு தேவை — உதவி தேவைப்பட்டால் கேளுங்கள்." },
-      { h:"காப்புப்பிரதி & மீட்டமை", p:"(ஆஃபீஸ் மட்டும்) தவறாமல் ⬇ Backup தட்டி உங்கள் தரவை ஒரு கோப்பாக சேமிக்கவும். ஏதேனும் தவறு நேர்ந்தால், ⬆ Restore மூலம் மீட்டெடுக்கலாம்." },
-      { h:"இந்த ஆப்பை Home Screen-ல் சேர்ப்பது", p:"Android (Chrome): உலாவியின் மேல்-வலது ⋮ மெனுவைத் தட்டி \"Add to Home screen\" அல்லது \"Install app\" தேர்ந்தெடுக்கவும். iPhone (Safari): Share ஐகானைத் தட்டி \"Add to Home Screen\" தேர்ந்தெடுக்கவும். சேர்த்தபின், இது ஒரு சாதாரண ஆப் போல திறக்கும், முகவரி பட்டி இல்லாமல்." }
-    ]
-  };
-  function renderManual(){
-    var sections = MANUAL_SECTIONS[state.lang] || MANUAL_SECTIONS.en;
-    var html = sections.map(function(s){
-      return "<div style='font-weight:800;color:var(--navy);margin:14px 0 4px;font-size:14px;'>" + escapeHtml(s.h) + "</div>" +
-        "<div style='color:var(--ink);'>" + escapeHtml(s.p) + "</div>";
-    }).join("");
-    document.getElementById("manualBody").innerHTML = html;
+  var MANUAL_PALETTE = [
+    ["#1e3a5f","#2c5f8a"], ["#b5541f","#d97b3f"], ["#1f7a4d","#2fa06a"],
+    ["#6b3fa0","#8f5fc7"], ["#0f2a3f","#16405e"], ["#3f6b7a","#5f95a6"]
+  ];
+  var MANUAL_PAGES = [
+    { icon:"🔑", tEn:"Signing In", tTa:"உள்நுழைவது",
+      xEn:"Office signs in with the Office PIN (default 1234, change it in Shop Details) and can see and do everything. Staff sign in with their own name and PIN, and only see the lines (A, B, U, etc.) assigned to them.",
+      xTa:"ஆஃபீஸ் தன் PIN-ஐ பயன்படுத்தி உள்நுழையலாம் (இயல்பு 1234, கடை விவரங்களில் மாற்றலாம்) — எல்லாவற்றையும் பார்க்க/செய்ய முடியும். ஊழியர்கள் தங்கள் பெயர் மற்றும் PIN மூலம் உள்நுழைந்து, தங்களுக்கு ஒதுக்கப்பட்ட வரிசைகளை (A, B, U போன்றவை) மட்டுமே பார்க்க முடியும்." },
+    { icon:"➕", tEn:"Adding a Customer", tTa:"வாடிக்கையாளரைச் சேர்ப்பது",
+      xEn:"Tap any empty grey box (marked +) to add a customer there. Fill in their name, mobile number, plan amount, and payment status, then Save Customer.",
+      xTa:"காலியான சாம்பல் நிற பாக்ஸை (+ குறியுடன்) தட்டி புதிய வாடிக்கையாளரைச் சேர்க்கவும். பெயர், மொபைல் எண், திட்ட தொகை, கட்டண நிலை பூர்த்தி செய்து Save Customer தட்டவும்." },
+    { icon:"💰", tEn:"Marking a Payment (Billing)", tTa:"கட்டணம் வசூலிப்பது (பில்லிங்)",
+      xEn:"Tap \"Mark Paid\" on a customer's box. Choose how many months they're paying for, confirm the amount and mode (Cash/UPI), then tap Cash or UPI to record it. This is the proper way to bill someone.",
+      xTa:"வாடிக்கையாளர் பாக்ஸில் \"Mark Paid\" தட்டவும். எத்தனை மாதங்களுக்கு செலுத்துகிறார் என தேர்ந்தெடுத்து, தொகை மற்றும் முறையை (Cash/UPI) உறுதிசெய்து, Cash அல்லது UPI தட்டவும். இதுவே சரியான பில்லிங் முறை." },
+    { icon:"✏️", tEn:"Editing a Customer", tTa:"வாடிக்கையாளரைத் திருத்துவது",
+      xEn:"Tap anywhere on a customer's box to open their details, change any field, and Save. You'll also see their full Payment History here — every past payment, with date, amount, mode and who collected it.",
+      xTa:"வாடிக்கையாளர் பாக்ஸை தட்டி விவரங்களைத் திருத்தி Save செய்யலாம். இங்கே அவரின் முழு கட்டண வரலாறும் (தேதி, தொகை, முறை, யார் வசூலித்தார்) காணலாம்." },
+    { icon:"🧾", tEn:"Sending a Bill", tTa:"பில் அனுப்புவது",
+      xEn:"Tap \"Bill\" on a customer's box to preview their receipt. From there you can Print it, Send on WhatsApp, Send SMS, or Share to a print app.",
+      xTa:"வாடிக்கையாளர் பாக்ஸில் \"Bill\" தட்டி ரசீதை பார்க்கலாம். அங்கிருந்து Print, WhatsApp, SMS, அல்லது வேறு பிரிண்ட் ஆப்பிற்கு பகிரலாம்." },
+    { icon:"📊", tEn:"Collection Report", tTa:"வசூல் அறிக்கை",
+      xEn:"Tap 📊 Report to see totals, a Paid/Unpaid/Suspended chart, and a full list of every payment collected — filterable by date range and downloadable as a CSV file.",
+      xTa:"📊 Report தட்டி மொத்த வசூல், Paid/Unpaid/Suspended விவரம், மற்றும் ஒவ்வொரு கட்டணத்தின் முழு பட்டியலையும் காணலாம் — தேதி வாரியாக வடிகட்டி CSV ஆக பதிவிறக்கம் செய்யலாம்." },
+    { icon:"🕒", tEn:"Activity Log", tTa:"செயல்பாட்டு பதிவு",
+      xEn:"Tap 🕒 Activity to see a full history of every add, edit, removal, and payment made in the app, with who did it and when.",
+      xTa:"🕒 Activity தட்டி இந்த ஆப்பில் நடந்த ஒவ்வொரு சேர்த்தல், திருத்தம், நீக்கம், கட்டணம் ஆகியவற்றின் முழு பதிவையும் — யார், எப்போது செய்தார் என்பதுடன் காணலாம்." },
+    { icon:"👤", tEn:"Managing Staff", tTa:"ஊழியர்களை நிர்வகிப்பது",
+      xEn:"(Office only) Tap 👤 Staff to add staff members, set their PIN, and choose which lines each one can see and bill.",
+      xTa:"(ஆஃபீஸ் மட்டும்) 👤 Staff தட்டி ஊழியர்களைச் சேர்த்து, PIN அமைத்து, அவர்கள் பார்க்கக்கூடிய வரிசைகளை தேர்ந்தெடுக்கலாம்." },
+    { icon:"🗂️", tEn:"Managing Lines", tTa:"வரிசைகளை நிர்வகிப்பது",
+      xEn:"(Office only) Tap the ➕ next to your line tabs to add a new line (like a new B or C series) or change how many customer slots a line has.",
+      xTa:"(ஆஃபீஸ் மட்டும்) வரிசை tab-களுக்கு அருகில் உள்ள ➕ தட்டி புதிய வரிசை (B, C போன்றவை) சேர்க்கலாம் அல்லது எண்ணிக்கையை மாற்றலாம்." },
+    { icon:"☁️", tEn:"Cloud Sync", tTa:"கிளவுட் சின்க்",
+      xEn:"(Office only) Tap ☁ Cloud Sync to connect your office computer and staff phones to the same live data. This needs a one-time Firebase setup — ask if you need help.",
+      xTa:"(ஆஃபீஸ் மட்டும்) ☁ Cloud Sync தட்டி உங்கள் ஆஃபீஸ் கணினி மற்றும் ஊழியர் மொபைல்களை ஒரே நேரடி தரவுடன் இணைக்கலாம். இதற்கு ஒருமுறை Firebase அமைப்பு தேவை." },
+    { icon:"💾", tEn:"Backup & Restore", tTa:"காப்புப்பிரதி & மீட்டமை",
+      xEn:"(Office only) Tap ⬇ Backup regularly to save a copy of all your data as a file. If anything ever goes wrong, use ⬆ Restore to bring it back.",
+      xTa:"(ஆஃபீஸ் மட்டும்) தவறாமல் ⬇ Backup தட்டி உங்கள் தரவை ஒரு கோப்பாக சேமிக்கவும். ஏதேனும் தவறு நேர்ந்தால், ⬆ Restore மூலம் மீட்டெடுக்கலாம்." },
+    { icon:"📱", tEn:"Adding This App to Your Home Screen", tTa:"Home Screen-ல் சேர்ப்பது",
+      xEn:"Android (Chrome): tap ⋮ menu → \"Add to Home screen\" / \"Install app\". iPhone (Safari): tap Share → \"Add to Home Screen\". It then opens like a real app, no address bar.",
+      xTa:"Android (Chrome): ⋮ மெனுவைத் தட்டி \"Add to Home screen\" தேர்ந்தெடுக்கவும். iPhone (Safari): Share ஐகானைத் தட்டி \"Add to Home Screen\" தேர்ந்தெடுக்கவும். இது ஒரு சாதாரண ஆப் போல திறக்கும்." }
+  ];
+  var manualPageIndex = 0;
+  function renderManualBook(){
+    var viewport = document.getElementById("manualBookViewport");
+    var prevBtn = document.getElementById("manualPrevBtn");
+    var nextBtn = document.getElementById("manualNextBtn");
+    var dots = document.getElementById("manualDots");
+    var total = MANUAL_PAGES.length;
+
+    if(manualPageIndex === 0){
+      var logoSrc = "";
+      var splashImg = document.querySelector("#appSplash img");
+      if(splashImg) logoSrc = splashImg.src;
+      viewport.innerHTML =
+        "<div style='background:linear-gradient(160deg,#0a1826,#16405e);min-height:480px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;text-align:center;color:#fff;'>" +
+          (logoSrc ? "<img src='"+logoSrc+"' style='width:110px;height:110px;border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,.4);margin-bottom:20px;'>" : "") +
+          "<div style='font-size:22px;font-weight:800;letter-spacing:.02em;'>Cable TV Billing Manager</div>" +
+          "<div style='font-size:13px;color:#9fc4dd;margin-top:6px;font-weight:700;letter-spacing:.03em;'>by SIMPLE APPS</div>" +
+          "<div style='margin-top:30px;font-size:13.5px;color:#cfe0ec;font-weight:600;'>📖 User Manual · பயனர் கையேடு</div>" +
+          "<div style='margin-top:6px;font-size:12px;color:#8fa9bb;'>Tap Next to begin · தொடர Next தட்டவும்</div>" +
+        "</div>";
+    }else{
+      var page = MANUAL_PAGES[manualPageIndex - 1];
+      var colors = MANUAL_PALETTE[(manualPageIndex - 1) % MANUAL_PALETTE.length];
+      viewport.innerHTML =
+        "<div style='background:linear-gradient(160deg,"+colors[0]+","+colors[1]+");min-height:480px;display:flex;flex-direction:column;justify-content:center;padding:34px 26px;color:#fff;'>" +
+          "<div style='font-size:44px;margin-bottom:14px;'>"+page.icon+"</div>" +
+          "<div style='font-size:19px;font-weight:800;'>"+escapeHtml(page.tEn)+"</div>" +
+          "<div style='font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-top:2px;margin-bottom:16px;'>"+escapeHtml(page.tTa)+"</div>" +
+          "<div style='font-size:14px;line-height:1.6;'>"+escapeHtml(page.xEn)+"</div>" +
+          "<div style='height:1px;background:rgba(255,255,255,.28);margin:16px 0;'></div>" +
+          "<div style='font-size:14px;line-height:1.75;'>"+escapeHtml(page.xTa)+"</div>" +
+        "</div>";
+    }
+
+    prevBtn.disabled = manualPageIndex === 0;
+    prevBtn.style.opacity = manualPageIndex === 0 ? "0.4" : "1";
+    nextBtn.textContent = manualPageIndex === total ? "Done ✓" : "Next →";
+
+    dots.innerHTML = "";
+    for(var i = 1; i <= total; i++){
+      var dot = document.createElement("span");
+      dot.style.cssText = "width:6px;height:6px;border-radius:50%;display:inline-block;background:" +
+        (i === manualPageIndex ? "var(--accent)" : "#d7dde3") + ";transition:background .2s;";
+      dots.appendChild(dot);
+    }
   }
+  document.getElementById("manualPrevBtn").addEventListener("click", function(){
+    if(manualPageIndex > 0){ manualPageIndex--; renderManualBook(); }
+  });
+  document.getElementById("manualNextBtn").addEventListener("click", function(){
+    if(manualPageIndex >= MANUAL_PAGES.length){ hideOverlay("manualOverlay"); return; }
+    manualPageIndex++; renderManualBook();
+  });
   document.getElementById("manualBtn").addEventListener("click", function(){
-    renderManual();
+    manualPageIndex = 0;
+    renderManualBook();
     showOverlay("manualOverlay");
   });
 
@@ -1183,9 +1285,6 @@
     document.getElementById("logoutBtnLabel").textContent = t("logoutBtnLabel");
     document.getElementById("activityBtnLabel").textContent = t("activityBtnLabel");
     document.getElementById("manualBtnLabel").textContent = t("manualBtnLabel");
-    document.getElementById("manualTitle").textContent = t("manualTitle");
-    document.getElementById("manualSub").textContent = t("manualSub");
-    if(document.getElementById("manualOverlay").classList.contains("show")) renderManual();
     document.getElementById("activityTitle").textContent = t("activityTitle");
     document.getElementById("activitySub").textContent = t("activitySub");
     document.getElementById("lblActivityFrom").textContent = t("lblActivityFrom");
@@ -1336,6 +1435,7 @@
       document.getElementById("searchInput").value = text;
       state.searchTerm = text;
       renderGrid();
+      renderSearchDropdown(text);
     }, false);
   });
 
@@ -1759,10 +1859,28 @@
         "</div>";
     }).join("");
   }
+  function updateCustNavButtons(id){
+    var prevBtn = document.getElementById("custPrevBtn");
+    var nextBtn = document.getElementById("custNextBtn");
+    var code = categoryCodeOfId(id);
+    var cat = code ? state.categories.filter(function(c){ return c.code === code; })[0] : null;
+    if(!cat){ prevBtn.style.display = "none"; nextBtn.style.display = "none"; return; }
+    prevBtn.style.display = ""; nextBtn.style.display = "";
+    var num = parseInt(id.slice(code.length), 10);
+    var prevId = code + (num - 1);
+    var nextId = code + (num + 1);
+    prevBtn.disabled = num <= 1;
+    prevBtn.style.opacity = num <= 1 ? "0.4" : "1";
+    prevBtn.onclick = function(){ if(num > 1) openCustomerModal(prevId, state.data[prevId] || null); };
+    nextBtn.disabled = num >= cat.max;
+    nextBtn.style.opacity = num >= cat.max ? "0.4" : "1";
+    nextBtn.onclick = function(){ if(num < cat.max) openCustomerModal(nextId, state.data[nextId] || null); };
+  }
   function openCustomerModal(id, c){
     state.activeBox = id;
     document.getElementById("custModalTitle").textContent = c ? t("editTitle") : t("addTitle");
     document.getElementById("custModalSub").textContent = t("boxLabel") + " " + id;
+    updateCustNavButtons(id);
     document.getElementById("fName").value = c ? c.name || "" : "";
     document.getElementById("fMobile").value = c ? c.mobile || "" : "";
     document.getElementById("fAmount").value = c ? c.amount || "" : "";
@@ -1795,6 +1913,7 @@
     updateStatusPicker();
     document.getElementById("deleteCustBtn").style.display = c ? "inline-block" : "none";
     document.getElementById("billFromModalBtn").style.display = c ? "inline-block" : "none";
+    document.getElementById("markPaidFromModalBtn").style.display = c ? "inline-block" : "none";
     showOverlay("customerOverlay");
   }
   function updateStatusPicker(){
@@ -1861,6 +1980,11 @@
     var id = state.activeBox; var c = state.data[id];
     if(!c){ alert("Save the customer first, then generate the bill."); return; }
     hideOverlay("customerOverlay"); openReceipt(id, c);
+  });
+  document.getElementById("markPaidFromModalBtn").addEventListener("click", function(){
+    var id = state.activeBox; var c = state.data[id];
+    if(!c){ alert("Save the customer first, then mark them paid."); return; }
+    hideOverlay("customerOverlay"); openModePopup(id);
   });
 
   // ---------- Receipt ----------
@@ -1993,8 +2117,62 @@
   });
 
   // ---------- Search ----------
+  function renderSearchDropdown(term){
+    var dd = document.getElementById("searchResultsDd");
+    term = (term || "").trim().toLowerCase();
+    if(!term){ dd.classList.remove("show"); dd.innerHTML = ""; return; }
+    var matches = [];
+    visibleCategories().forEach(function(cat){
+      for(var i=1;i<=cat.max;i++){
+        var id = cat.code + i; var c = state.data[id];
+        if(!c) continue;
+        var hay = (c.name||"") + " " + (c.mobile||"") + " " + id + " " + (c.stb||"");
+        if(hay.toLowerCase().indexOf(term) !== -1){ matches.push([id, c]); }
+      }
+    });
+    if(!matches.length){
+      dd.innerHTML = "<div class='srd-empty'>" + t("noResultsText") + "</div>";
+      dd.classList.add("show");
+      return;
+    }
+    var LIMIT = 8;
+    var shown = matches.slice(0, LIMIT);
+    var statusLabelKeys = { paid:"optPaid", unpaid:"optUnpaid", suspended:"optSuspended" };
+    dd.innerHTML = shown.map(function(m){
+      var id = m[0], c = m[1];
+      var lbl = t(statusLabelKeys[c.status] || "optUnpaid");
+      return "<div class='srd-row' data-id='" + id + "'>" +
+        "<span class='srd-dot status-" + c.status + "'></span>" +
+        "<span style='flex:1;min-width:0;'>" +
+          "<div class='srd-name'>" + escapeHtml(c.name||"") + "</div>" +
+          "<div class='srd-sub'>" + id + (c.mobile ? " • " + escapeHtml(c.mobile) : "") + "</div>" +
+        "</span>" +
+        "<span class='srd-badge status-" + c.status + "'>" + lbl + "</span>" +
+      "</div>";
+    }).join("") + (matches.length > LIMIT ? "<div class='srd-more'>+" + (matches.length - LIMIT) + " more — keep typing to narrow it down</div>" : "");
+    dd.querySelectorAll(".srd-row").forEach(function(row){
+      row.addEventListener("click", function(){
+        var id = row.getAttribute("data-id");
+        dd.classList.remove("show");
+        openCustomerModal(id, state.data[id]);
+      });
+    });
+    dd.classList.add("show");
+  }
   document.getElementById("searchInput").addEventListener("input", function(){
     state.searchTerm = this.value; renderGrid();
+    renderSearchDropdown(this.value);
+  });
+  document.getElementById("searchInput").addEventListener("focus", function(){
+    if(this.value.trim()) renderSearchDropdown(this.value);
+  });
+  document.addEventListener("click", function(e){
+    if(!e.target.closest(".search-wrap")){
+      document.getElementById("searchResultsDd").classList.remove("show");
+    }
+  });
+  document.getElementById("searchInput").addEventListener("keydown", function(e){
+    if(e.key === "Escape"){ document.getElementById("searchResultsDd").classList.remove("show"); }
   });
 
   // ---------- Backup / Restore ----------
