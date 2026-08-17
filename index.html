@@ -959,6 +959,11 @@
       lineAdded:"Line added successfully.",
       deleteLineBtn:"Remove",
       lblHistory:"Payment History", noPaymentHistory:"No payment history yet.",
+      actionCancelled:"Payment cancelled", cancelledTag:"CANCELLED",
+      cancelPaymentBtn:"↩ Cancel Payment", confirmCancelPayment:"Cancel this payment? The customer's status, dates and amount will be reverted to how they were before it was recorded.",
+      cancelNotLatestMsg:"This isn't the customer's most recent payment, so it can't be safely cancelled. Only the latest payment for a customer can be cancelled.",
+      cancelCustomerMissingMsg:"This customer no longer exists, so this payment can't be cancelled.",
+      cancelTooOldMsg:"This payment is too old to be cancelled automatically.",
       trialLockedTitle:"Subscription Paused", trialLockedMsg:"Your trial or subscription period has ended. Your data is safe and untouched — please contact us to continue.",
       trialLockedRecheckLabel:"I've Renewed — Check Again",
       licenseDueSoonText:"Your subscription is due for renewal soon — please contact"
@@ -1037,6 +1042,11 @@
       lineAdded:"வரிசை வெற்றிகரமாக சேர்க்கப்பட்டது.",
       deleteLineBtn:"நீக்கு",
       lblHistory:"கட்டண வரலாறு", noPaymentHistory:"இதுவரை கட்டண வரலாறு இல்லை.",
+      actionCancelled:"கட்டணம் ரத்து செய்யப்பட்டது", cancelledTag:"ரத்து செய்யப்பட்டது",
+      cancelPaymentBtn:"↩ கட்டணத்தை ரத்து செய்", confirmCancelPayment:"இந்த கட்டணத்தை ரத்து செய்யவா? வாடிக்கையாளரின் நிலை, தேதிகள் மற்றும் தொகை இது பதிவு செய்யப்படுவதற்கு முன் இருந்தது போல மாற்றப்படும்.",
+      cancelNotLatestMsg:"இது வாடிக்கையாளரின் சமீபத்திய கட்டணம் அல்ல, எனவே பாதுகாப்பாக ரத்து செய்ய முடியாது. சமீபத்திய கட்டணத்தை மட்டுமே ரத்து செய்ய முடியும்.",
+      cancelCustomerMissingMsg:"இந்த வாடிக்கையாளர் இனி இல்லை, எனவே இந்த கட்டணத்தை ரத்து செய்ய முடியாது.",
+      cancelTooOldMsg:"இந்த கட்டணம் தானாக ரத்து செய்ய மிகவும் பழையது.",
       trialLockedTitle:"சந்தா இடைநிறுத்தப்பட்டது", trialLockedMsg:"உங்கள் trial அல்லது சந்தா காலம் முடிந்துவிட்டது. உங்கள் தரவு பாதுகாப்பாக உள்ளது — தொடர எங்களை தொடர்பு கொள்ளவும்.",
       trialLockedRecheckLabel:"புதுப்பித்தேன் — மீண்டும் சரிபார்",
       licenseDueSoonText:"உங்கள் சந்தா விரைவில் புதுப்பிக்கப்பட வேண்டும் — தொடர்பு கொள்ளவும்"
@@ -1212,11 +1222,12 @@
   function logActivity(action, boxId, customerName, extra, meta){
     var actor = "Unknown";
     if(state.session){ actor = state.session.role === "office" ? "Office" : state.session.staffName; }
-    var entry = { time: Date.now(), actor: actor, action: action, box: boxId, name: customerName || "", extra: extra || "" };
+    var entry = { id: Date.now() + "_" + Math.random().toString(36).slice(2,8), time: Date.now(), actor: actor, action: action, box: boxId, name: customerName || "", extra: extra || "" };
     if(meta) entry.meta = meta;
     state.activityLog.unshift(entry);
     if(state.activityLog.length > 300){ state.activityLog = state.activityLog.slice(0, 300); }
     saveActivity();
+    return entry;
   }
   function saveLang(){ localStorage.setItem(LANG_KEY, state.lang); }
   function nextInvoiceNumber(){
@@ -1828,6 +1839,13 @@
       var periodFrom = document.getElementById("modePeriodFrom").value || c.dueDate || c.lastPaid || todayStr();
       var periodTo = document.getElementById("modePeriodTo").value || addMonthsToDate(periodFrom, months);
       var datePaid = document.getElementById("modeDatePaid").value || todayStr();
+      // Snapshot exactly how this customer looked right before this payment, so
+      // Office can undo just this one transaction later if it was entered wrong.
+      var prevState = {
+        status: c.status, lastPaid: c.lastPaid, dueDate: c.dueDate, mode: c.mode, collector: c.collector,
+        lastPaidAmount: c.lastPaidAmount, monthsPaid: c.monthsPaid, periodFrom: c.periodFrom, periodTo: c.periodTo,
+        lastBillingNote: c.lastBillingNote, paidRecordedOn: c.paidRecordedOn
+      };
       c.status = "paid";
       c.lastPaid = periodTo;
       c.dueDate = periodTo;
@@ -1840,7 +1858,8 @@
       c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
       logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
-        { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount });
+        { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount,
+          prevState: prevState, afterPeriodTo: periodTo, afterPaidRecordedOn: datePaid });
       saveData(); hideOverlay("modeOverlay"); renderAll();
     });
   });
@@ -1868,7 +1887,9 @@
       var subParts = [dateStr + monthsTxt];
       if(mode) subParts.push(mode);
       if(collector) subParts.push(escapeHtml(collector));
-      return "<div style='display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eef1f4;font-size:12.5px;'>"+
+      if(e.cancelled) subParts.push("<b style='color:var(--unpaid-dark);'>" + t("cancelledTag") + "</b>");
+      var rowStyle = "display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eef1f4;font-size:12.5px;" + (e.cancelled ? "opacity:.55;text-decoration:line-through;" : "");
+      return "<div style='"+rowStyle+"'>"+
         "<span>"+subParts.join(" · ")+"</span>"+
         "<span style='font-weight:700;color:var(--paid-dark);'>"+fmtMoney(amount)+"</span>"+
         "</div>";
@@ -2778,7 +2799,7 @@
       else if(c.status === "suspended"){ suspended++; }
     });
     state.activityLog.forEach(function(e){
-      if(e.action !== "paid") return;
+      if(e.action !== "paid" || e.cancelled) return;
       if(!isBoxVisible(e.box)) return;
       if(staffOnly && e.actor === "Office") return; // office's own collections stay out of a staff member's report
       var day = reportDayStr(e.time);
@@ -2833,7 +2854,7 @@
   function renderReportDetail(fromDate, toDate){
     var staffOnly = state.session && state.session.role === "staff";
     var rows = state.activityLog.filter(function(e){
-      if(e.action !== "paid") return false;
+      if(e.action !== "paid" || e.cancelled) return false;
       if(!isBoxVisible(e.box)) return false;
       if(staffOnly && e.actor === "Office") return false;
       var day = reportDayStr(e.time);
@@ -3010,7 +3031,7 @@
     var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
     return y + "-" + m + "-" + day;
   }
-  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid" };
+  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid", cancelled:"actionCancelled" };
 
   function getFilteredActivity(){
     var fromDate = document.getElementById("activityDateFrom").value;
@@ -3022,6 +3043,29 @@
       if(toDate && key > toDate) return false;
       return true;
     });
+  }
+
+  // Reverses a single "paid" entry: restores the customer to exactly how they
+  // looked right before that payment, and marks the entry as cancelled so it
+  // stops counting in reports. Office-only, and only for a customer's most
+  // recent payment (so it can never silently undo the wrong transaction).
+  function cancelPayment(entryId){
+    var entry = state.activityLog.filter(function(e){ return e.id === entryId; })[0];
+    if(!entry || entry.action !== "paid" || entry.cancelled) return;
+    var c = state.data[entry.box];
+    if(!c){ alert(t("cancelCustomerMissingMsg")); return; }
+    if(!entry.meta || !entry.meta.prevState){ alert(t("cancelTooOldMsg")); return; }
+    var isLatest = c.paidRecordedOn === entry.meta.afterPaidRecordedOn && c.periodTo === entry.meta.afterPeriodTo;
+    if(!isLatest){ alert(t("cancelNotLatestMsg")); return; }
+    if(!confirm(t("confirmCancelPayment"))) return;
+    var prev = entry.meta.prevState;
+    ["status","lastPaid","dueDate","mode","collector","lastPaidAmount","monthsPaid","periodFrom","periodTo","lastBillingNote","paidRecordedOn"].forEach(function(k){
+      if(prev[k] === undefined){ delete c[k]; } else { c[k] = prev[k]; }
+    });
+    if(!c.status) c.status = "unpaid";
+    entry.cancelled = true;
+    logActivity("cancelled", entry.box, entry.name, fmtMoney(entry.meta.amount) + " reversed");
+    saveData(); renderAll(); renderActivityList();
   }
 
   function renderActivityList(){
@@ -3037,11 +3081,22 @@
       row.className = "list-item";
       row.style.cursor = "default";
       var actionLabel = t(ACTION_LABEL_KEYS[e.action] || "actionUpdated");
+      if(e.action === "paid" && e.cancelled) actionLabel += " (" + t("cancelledTag") + ")";
       var extraTxt = e.extra ? " · " + escapeHtml(e.extra) : "";
+      var canCancel = isOffice() && e.action === "paid" && !e.cancelled;
       row.innerHTML =
         "<span><span class='nm'>" + escapeHtml(e.name || e.box) + " (" + e.box + ")</span><br>" +
         "<span class='mm'>" + actionLabel + extraTxt + "</span></span>" +
-        "<span class='mm' style='text-align:right;'>" + escapeHtml(e.actor) + "<br>" + fmtDateTime(e.time) + "</span>";
+        "<span style='text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px;'>" +
+          "<span class='mm'>" + escapeHtml(e.actor) + "<br>" + fmtDateTime(e.time) + "</span>" +
+          (canCancel ? "<button class='btn btn-sm btn-outline cancelPaymentBtn' style='color:var(--unpaid-dark);border-color:var(--unpaid);'>" + t("cancelPaymentBtn") + "</button>" : "") +
+        "</span>";
+      if(canCancel){
+        row.querySelector(".cancelPaymentBtn").addEventListener("click", function(ev){
+          ev.stopPropagation();
+          cancelPayment(e.id);
+        });
+      }
       body.appendChild(row);
     });
   }
