@@ -588,6 +588,10 @@
       <select id="modeCollectorSelect"></select>
     </div>
     <div class="field">
+      <label id="lblModeNotes">Notes (optional)</label>
+      <textarea id="modeNotes" rows="2"></textarea>
+    </div>
+    <div class="field">
       <label id="lblModeMode">Mode</label>
       <div class="mode-grid">
         <button data-mode="cash" id="modeCashBtn">💵 Cash</button>
@@ -897,7 +901,7 @@
       lblModeName:"Name", lblModeMobile:"Mobile", lblModePlanAmount:"Plan Amount (₹)", lblModeAmountReceived:"Amount Received (₹)",
       lblModePeriod:"For a Period of", lblModeFrom:"From", lblModeTo:"To", lblModeDatePaid:"Date Paid", lblModeCurrentDate:"Current Date",
       lblModeStb:"STB / Box No", lblModeStatus:"Status", lblModeLastPayment:"Last Payment (new)", lblModeNextPayment:"Next Payment",
-      lblModeMode:"Mode",
+      lblModeNotes:"Notes (optional)", lblModeMode:"Mode",
       staffBtn:"👤 Staff", staffTitle:"Manage Staff", staffSub:"Add the names of members who collect payments",
       lblNewStaff:"New Staff Name", addStaffBtn:"➕ Add Staff", staffExists:"This staff name already exists.",
       staffAdded:"Staff added successfully.", deleteStaffBtn:"Remove", reportByStaff:"Collected by", collectorOffice:"Office",
@@ -921,7 +925,6 @@
       logoutBtnLabel:"Sign Out", noLinesAssigned:"You don't have any lines assigned yet. Please ask Office to assign you a line.",
       optPaid:"Paid", optUnpaid:"Unpaid", optSuspended:"Suspended",
       modeCash:"Cash", modeUpi:"UPI", modeMonthsTotalLabel:"Total to collect:",
-      confirmMarkPaid:"Mark {name} as PAID?\n\nAmount: {amount} ({mode})\nPeriod: {from} to {to}\n\nThis will update their status immediately.",
       removeBtn:"🗑 Remove", billBtn:"🧾 Generate Bill", saveCustomerBtn:"Save Customer",
       receiptTitle:"Billing Receipt", receiptSub:"Preview before printing or sending",
       printBtn:"🖨 Print", sendBtn:"📩 Send on WhatsApp", sendSmsBtn:"📱 Send SMS", sessionOfficeId:"Office ID",
@@ -956,11 +959,6 @@
       lineAdded:"Line added successfully.",
       deleteLineBtn:"Remove",
       lblHistory:"Payment History", noPaymentHistory:"No payment history yet.",
-      actionCancelled:"Payment cancelled", cancelledTag:"CANCELLED",
-      cancelPaymentBtn:"↩ Cancel Payment", confirmCancelPayment:"Cancel this payment? The customer's status, dates and amount will be reverted to how they were before it was recorded.",
-      cancelNotLatestMsg:"This isn't the customer's most recent payment, so it can't be safely cancelled. Only the latest payment for a customer can be cancelled.",
-      cancelCustomerMissingMsg:"This customer no longer exists, so this payment can't be cancelled.",
-      cancelTooOldMsg:"This payment is too old to be cancelled automatically.",
       trialLockedTitle:"Subscription Paused", trialLockedMsg:"Your trial or subscription period has ended. Your data is safe and untouched — please contact us to continue.",
       trialLockedRecheckLabel:"I've Renewed — Check Again",
       licenseDueSoonText:"Your subscription is due for renewal soon — please contact"
@@ -981,7 +979,7 @@
       lblModeName:"பெயர்", lblModeMobile:"மொபைல்", lblModePlanAmount:"திட்ட தொகை (₹)", lblModeAmountReceived:"பெறப்பட்ட தொகை (₹)",
       lblModePeriod:"எந்த காலத்திற்கு", lblModeFrom:"தொடக்கம்", lblModeTo:"முடிவு", lblModeDatePaid:"செலுத்திய தேதி", lblModeCurrentDate:"இன்றைய தேதி",
       lblModeStb:"STB / பாக்ஸ் எண்", lblModeStatus:"நிலை", lblModeLastPayment:"கடைசி கட்டணம் (புதியது)", lblModeNextPayment:"அடுத்த கட்டணம்",
-      lblModeMode:"முறை",
+      lblModeNotes:"குறிப்புகள் (விருப்பம்)", lblModeMode:"முறை",
       staffBtn:"👤 ஊழியர்", staffTitle:"ஊழியர்களை நிர்வகி", staffSub:"பணம் வசூலிக்கும் நபர்களின் பெயர்களைச் சேர்க்கவும்",
       lblNewStaff:"புதிய ஊழியர் பெயர்", addStaffBtn:"➕ ஊழியரைச் சேர்", staffExists:"இந்த பெயர் ஏற்கனவே உள்ளது.",
       staffAdded:"ஊழியர் வெற்றிகரமாக சேர்க்கப்பட்டார்.", deleteStaffBtn:"நீக்கு", reportByStaff:"வசூலித்தவர்", collectorOffice:"அலுவலகம்",
@@ -1005,7 +1003,6 @@
       logoutBtnLabel:"வெளியேறு", noLinesAssigned:"உங்களுக்கு இன்னும் வரிசைகள் ஒதுக்கப்படவில்லை. அலுவலகத்தை கேட்கவும்.",
       optPaid:"செலுத்தப்பட்டது", optUnpaid:"செலுத்தப்படவில்லை", optSuspended:"இடைநிறுத்தப்பட்டது",
       modeCash:"பணமாக", modeUpi:"UPI", modeMonthsTotalLabel:"மொத்தம் வசூலிக்க வேண்டியது:",
-      confirmMarkPaid:"{name} அவர்களை செலுத்தியதாக குறிக்கவா?\n\nதொகை: {amount} ({mode})\nகாலம்: {from} முதல் {to} வரை\n\nஇது உடனடியாக நிலையை புதுப்பிக்கும்.",
       removeBtn:"🗑 நீக்கு", billBtn:"🧾 பில் உருவாக்கு", saveCustomerBtn:"வாடிக்கையாளரை சேமி",
       receiptTitle:"பில் ரசீது", receiptSub:"அச்சிடும் முன் அல்லது அனுப்பும் முன் பார்வையிடவும்",
       printBtn:"🖨 அச்சிடு", sendBtn:"📩 WhatsApp வழியாக அனுப்பு", sendSmsBtn:"📱 SMS அனுப்பு", sessionOfficeId:"ஆஃபீஸ் ஐடி",
@@ -1040,11 +1037,6 @@
       lineAdded:"வரிசை வெற்றிகரமாக சேர்க்கப்பட்டது.",
       deleteLineBtn:"நீக்கு",
       lblHistory:"கட்டண வரலாறு", noPaymentHistory:"இதுவரை கட்டண வரலாறு இல்லை.",
-      actionCancelled:"கட்டணம் ரத்து செய்யப்பட்டது", cancelledTag:"ரத்து செய்யப்பட்டது",
-      cancelPaymentBtn:"↩ கட்டணத்தை ரத்து செய்", confirmCancelPayment:"இந்த கட்டணத்தை ரத்து செய்யவா? வாடிக்கையாளரின் நிலை, தேதிகள் மற்றும் தொகை இது பதிவு செய்யப்படுவதற்கு முன் இருந்தது போல மாற்றப்படும்.",
-      cancelNotLatestMsg:"இது வாடிக்கையாளரின் சமீபத்திய கட்டணம் அல்ல, எனவே பாதுகாப்பாக ரத்து செய்ய முடியாது. சமீபத்திய கட்டணத்தை மட்டுமே ரத்து செய்ய முடியும்.",
-      cancelCustomerMissingMsg:"இந்த வாடிக்கையாளர் இனி இல்லை, எனவே இந்த கட்டணத்தை ரத்து செய்ய முடியாது.",
-      cancelTooOldMsg:"இந்த கட்டணம் தானாக ரத்து செய்ய மிகவும் பழையது.",
       trialLockedTitle:"சந்தா இடைநிறுத்தப்பட்டது", trialLockedMsg:"உங்கள் trial அல்லது சந்தா காலம் முடிந்துவிட்டது. உங்கள் தரவு பாதுகாப்பாக உள்ளது — தொடர எங்களை தொடர்பு கொள்ளவும்.",
       trialLockedRecheckLabel:"புதுப்பித்தேன் — மீண்டும் சரிபார்",
       licenseDueSoonText:"உங்கள் சந்தா விரைவில் புதுப்பிக்கப்பட வேண்டும் — தொடர்பு கொள்ளவும்"
@@ -1220,12 +1212,11 @@
   function logActivity(action, boxId, customerName, extra, meta){
     var actor = "Unknown";
     if(state.session){ actor = state.session.role === "office" ? "Office" : state.session.staffName; }
-    var entry = { id: Date.now() + "_" + Math.random().toString(36).slice(2,8), time: Date.now(), actor: actor, action: action, box: boxId, name: customerName || "", extra: extra || "" };
+    var entry = { time: Date.now(), actor: actor, action: action, box: boxId, name: customerName || "", extra: extra || "" };
     if(meta) entry.meta = meta;
     state.activityLog.unshift(entry);
     if(state.activityLog.length > 300){ state.activityLog = state.activityLog.slice(0, 300); }
     saveActivity();
-    return entry;
   }
   function saveLang(){ localStorage.setItem(LANG_KEY, state.lang); }
   function nextInvoiceNumber(){
@@ -1287,6 +1278,7 @@
     document.getElementById("lblModeLastPayment").textContent = t("lblModeLastPayment");
     document.getElementById("lblModeNextPayment").textContent = t("lblModeNextPayment");
     document.getElementById("lblModeCurrentDate").textContent = t("lblModeCurrentDate");
+    document.getElementById("lblModeNotes").textContent = t("lblModeNotes");
     document.getElementById("lblModeMode").textContent = t("lblModeMode");
     document.getElementById("staffBtn").textContent = t("staffBtn");
     document.getElementById("staffTitle").textContent = t("staffTitle");
@@ -1776,15 +1768,11 @@
     var c = id ? state.data[id] : null;
     var months = Number(document.getElementById("modeMonthsSelect").value) || 1;
     var plan = c ? (Number(c.amount) || 0) : 0;
-    // Suspended customers don't get the multi-month price multiplier — paying
-    // for several back-months at once still costs the single plan amount.
-    var isSuspended = c && c.status === "suspended";
-    var totalDue = isSuspended ? plan : (plan * months);
     if(!modeAmountTouched){
-      document.getElementById("modeAmountReceived").value = totalDue;
+      document.getElementById("modeAmountReceived").value = plan * months;
     }
     document.getElementById("modeMonthsHint").textContent =
-      months > 1 ? (isSuspended ? "" : (t("modeMonthsTotalLabel") + " " + fmtMoney(totalDue))) : "";
+      months > 1 ? (t("modeMonthsTotalLabel") + " " + fmtMoney(plan * months)) : "";
     if(!modeToTouched){
       var from = document.getElementById("modePeriodFrom").value;
       document.getElementById("modePeriodTo").value = addMonthsToDate(from, months);
@@ -1820,6 +1808,7 @@
     document.getElementById("modeCurrentDateDisplay").value = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
     var periodStart = c.dueDate || c.lastPaid || today;
     document.getElementById("modePeriodFrom").value = periodStart;
+    document.getElementById("modeNotes").value = "";
     modeAmountTouched = false; modeToTouched = false;
     updateModeCalculatedFields();
     showOverlay("modeOverlay");
@@ -1839,35 +1828,19 @@
       var periodFrom = document.getElementById("modePeriodFrom").value || c.dueDate || c.lastPaid || todayStr();
       var periodTo = document.getElementById("modePeriodTo").value || addMonthsToDate(periodFrom, months);
       var datePaid = document.getElementById("modeDatePaid").value || todayStr();
-      // Confirm before finalizing — this can't be undone by re-clicking, so a
-      // stray tap shouldn't be able to silently bill someone.
-      var confirmMsg = t("confirmMarkPaid")
-        .replace("{name}", c.name || id)
-        .replace("{amount}", fmtMoney(collectedAmt))
-        .replace("{mode}", t(m === "Cash" ? "modeCash" : "modeUpi"))
-        .replace("{from}", fmtPeriodDate(periodFrom))
-        .replace("{to}", fmtPeriodDate(periodTo));
-      if(!confirm(confirmMsg)) return;
-      // Snapshot exactly how this customer looked right before this payment, so
-      // Office can undo just this one transaction later if it was entered wrong.
-      var prevState = {
-        status: c.status, lastPaid: c.lastPaid, dueDate: c.dueDate, mode: c.mode, collector: c.collector,
-        lastPaidAmount: c.lastPaidAmount, monthsPaid: c.monthsPaid, periodFrom: c.periodFrom, periodTo: c.periodTo,
-        lastBillingNote: c.lastBillingNote, paidRecordedOn: c.paidRecordedOn
-      };
       c.status = "paid";
       c.lastPaid = periodTo;
-      c.dueDate = addMonthsToDate(periodTo, 1);
+      c.dueDate = periodTo;
       c.mode = m.toLowerCase();
       c.collector = collector;
       c.lastPaidAmount = collectedAmt;
       c.monthsPaid = months;
       c.periodFrom = periodFrom;
       c.periodTo = periodTo;
+      c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
       logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
-        { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount,
-          prevState: prevState, afterPeriodTo: periodTo, afterPaidRecordedOn: datePaid });
+        { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount });
       saveData(); hideOverlay("modeOverlay"); renderAll();
     });
   });
@@ -1895,9 +1868,7 @@
       var subParts = [dateStr + monthsTxt];
       if(mode) subParts.push(mode);
       if(collector) subParts.push(escapeHtml(collector));
-      if(e.cancelled) subParts.push("<b style='color:var(--unpaid-dark);'>" + t("cancelledTag") + "</b>");
-      var rowStyle = "display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eef1f4;font-size:12.5px;" + (e.cancelled ? "opacity:.55;text-decoration:line-through;" : "");
-      return "<div style='"+rowStyle+"'>"+
+      return "<div style='display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eef1f4;font-size:12.5px;'>"+
         "<span>"+subParts.join(" · ")+"</span>"+
         "<span style='font-weight:700;color:var(--paid-dark);'>"+fmtMoney(amount)+"</span>"+
         "</div>";
@@ -2701,35 +2672,23 @@
       updateSyncStatus("connected");
       if(!val) return;
       isApplyingRemote = true;
-      // Everything below is wrapped so that if a bad/unexpected remote payload
-      // ever makes renderAll() throw, isApplyingRemote still gets cleared in
-      // the finally block. Previously, a stuck isApplyingRemote=true silently
-      // blocked every future save from reaching the cloud (pushToCloud() bails
-      // out whenever it's true) — which looked like "Mark Paid stopped working"
-      // even though the click was registering fine locally.
-      try{
-        if(val.data) state.data = val.data;
-        if(val.settings) state.settings = Object.assign(state.settings, val.settings);
-        if(val.categories && val.categories.length) state.categories = val.categories;
-        if(val.staff && val.staff.length) state.staff = val.staff;
-        if(val.activityLog && val.activityLog.length) state.activityLog = val.activityLog;
-        localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
-        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories));
-        localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff));
-        localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
-        document.getElementById("shopNameInput").value = state.settings.shopName;
-        if(!state.categories.length){ state.categories = DEFAULT_CATEGORIES.slice(); }
-        if(!state.categories.some(function(c){ return c.code === state.activeCat; })){
-          state.activeCat = state.categories[0].code;
-        }
-        populateStaffDropdowns();
-        renderAll();
-      }catch(mergeErr){
-        console.error("Cloud sync: failed to apply an incoming update, but your own local data is untouched.", mergeErr);
-      }finally{
-        isApplyingRemote = false;
+      if(val.data) state.data = val.data;
+      if(val.settings) state.settings = Object.assign(state.settings, val.settings);
+      if(val.categories && val.categories.length) state.categories = val.categories;
+      if(val.staff && val.staff.length) state.staff = val.staff;
+      if(val.activityLog && val.activityLog.length) state.activityLog = val.activityLog;
+      localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+      localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories));
+      localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff));
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
+      document.getElementById("shopNameInput").value = state.settings.shopName;
+      if(!state.categories.some(function(c){ return c.code === state.activeCat; })){
+        state.activeCat = state.categories[0].code;
       }
+      populateStaffDropdowns();
+      renderAll();
+      isApplyingRemote = false;
     }, function(){ updateSyncStatus("error"); });
   }
 
@@ -2819,7 +2778,7 @@
       else if(c.status === "suspended"){ suspended++; }
     });
     state.activityLog.forEach(function(e){
-      if(e.action !== "paid" || e.cancelled) return;
+      if(e.action !== "paid") return;
       if(!isBoxVisible(e.box)) return;
       if(staffOnly && e.actor === "Office") return; // office's own collections stay out of a staff member's report
       var day = reportDayStr(e.time);
@@ -2874,7 +2833,7 @@
   function renderReportDetail(fromDate, toDate){
     var staffOnly = state.session && state.session.role === "staff";
     var rows = state.activityLog.filter(function(e){
-      if(e.action !== "paid" || e.cancelled) return false;
+      if(e.action !== "paid") return false;
       if(!isBoxVisible(e.box)) return false;
       if(staffOnly && e.actor === "Office") return false;
       var day = reportDayStr(e.time);
@@ -3051,7 +3010,7 @@
     var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
     return y + "-" + m + "-" + day;
   }
-  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid", cancelled:"actionCancelled" };
+  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid" };
 
   function getFilteredActivity(){
     var fromDate = document.getElementById("activityDateFrom").value;
@@ -3063,29 +3022,6 @@
       if(toDate && key > toDate) return false;
       return true;
     });
-  }
-
-  // Reverses a single "paid" entry: restores the customer to exactly how they
-  // looked right before that payment, and marks the entry as cancelled so it
-  // stops counting in reports. Office-only, and only for a customer's most
-  // recent payment (so it can never silently undo the wrong transaction).
-  function cancelPayment(entryId){
-    var entry = state.activityLog.filter(function(e){ return e.id === entryId; })[0];
-    if(!entry || entry.action !== "paid" || entry.cancelled) return;
-    var c = state.data[entry.box];
-    if(!c){ alert(t("cancelCustomerMissingMsg")); return; }
-    if(!entry.meta || !entry.meta.prevState){ alert(t("cancelTooOldMsg")); return; }
-    var isLatest = c.paidRecordedOn === entry.meta.afterPaidRecordedOn && c.periodTo === entry.meta.afterPeriodTo;
-    if(!isLatest){ alert(t("cancelNotLatestMsg")); return; }
-    if(!confirm(t("confirmCancelPayment"))) return;
-    var prev = entry.meta.prevState;
-    ["status","lastPaid","dueDate","mode","collector","lastPaidAmount","monthsPaid","periodFrom","periodTo","lastBillingNote","paidRecordedOn"].forEach(function(k){
-      if(prev[k] === undefined){ delete c[k]; } else { c[k] = prev[k]; }
-    });
-    if(!c.status) c.status = "unpaid";
-    entry.cancelled = true;
-    logActivity("cancelled", entry.box, entry.name, fmtMoney(entry.meta.amount) + " reversed");
-    saveData(); renderAll(); renderActivityList();
   }
 
   function renderActivityList(){
@@ -3101,22 +3037,11 @@
       row.className = "list-item";
       row.style.cursor = "default";
       var actionLabel = t(ACTION_LABEL_KEYS[e.action] || "actionUpdated");
-      if(e.action === "paid" && e.cancelled) actionLabel += " (" + t("cancelledTag") + ")";
       var extraTxt = e.extra ? " · " + escapeHtml(e.extra) : "";
-      var canCancel = isOffice() && e.action === "paid" && !e.cancelled;
       row.innerHTML =
         "<span><span class='nm'>" + escapeHtml(e.name || e.box) + " (" + e.box + ")</span><br>" +
         "<span class='mm'>" + actionLabel + extraTxt + "</span></span>" +
-        "<span style='text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:4px;'>" +
-          "<span class='mm'>" + escapeHtml(e.actor) + "<br>" + fmtDateTime(e.time) + "</span>" +
-          (canCancel ? "<button class='btn btn-sm btn-outline cancelPaymentBtn' style='color:var(--unpaid-dark);border-color:var(--unpaid);'>" + t("cancelPaymentBtn") + "</button>" : "") +
-        "</span>";
-      if(canCancel){
-        row.querySelector(".cancelPaymentBtn").addEventListener("click", function(ev){
-          ev.stopPropagation();
-          cancelPayment(e.id);
-        });
-      }
+        "<span class='mm' style='text-align:right;'>" + escapeHtml(e.actor) + "<br>" + fmtDateTime(e.time) + "</span>";
       body.appendChild(row);
     });
   }
@@ -3298,13 +3223,7 @@
   }
 
   // ---------- Init ----------
-  function renderAll(){
-    try{
-      applyDueDateFlips(); renderTabs(); renderSummary(); renderGrid();
-    }catch(err){
-      console.error("renderAll failed:", err);
-    }
-  }
+  function renderAll(){ applyDueDateFlips(); renderTabs(); renderSummary(); renderGrid(); }
 
   applyLocalTrialState();
   loadAll();
