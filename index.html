@@ -588,10 +588,6 @@
       <select id="modeCollectorSelect"></select>
     </div>
     <div class="field">
-      <label id="lblModeNotes">Notes (optional)</label>
-      <textarea id="modeNotes" rows="2"></textarea>
-    </div>
-    <div class="field">
       <label id="lblModeMode">Mode</label>
       <div class="mode-grid">
         <button data-mode="cash" id="modeCashBtn">💵 Cash</button>
@@ -901,7 +897,7 @@
       lblModeName:"Name", lblModeMobile:"Mobile", lblModePlanAmount:"Plan Amount (₹)", lblModeAmountReceived:"Amount Received (₹)",
       lblModePeriod:"For a Period of", lblModeFrom:"From", lblModeTo:"To", lblModeDatePaid:"Date Paid", lblModeCurrentDate:"Current Date",
       lblModeStb:"STB / Box No", lblModeStatus:"Status", lblModeLastPayment:"Last Payment (new)", lblModeNextPayment:"Next Payment",
-      lblModeNotes:"Notes (optional)", lblModeMode:"Mode",
+      lblModeMode:"Mode",
       staffBtn:"👤 Staff", staffTitle:"Manage Staff", staffSub:"Add the names of members who collect payments",
       lblNewStaff:"New Staff Name", addStaffBtn:"➕ Add Staff", staffExists:"This staff name already exists.",
       staffAdded:"Staff added successfully.", deleteStaffBtn:"Remove", reportByStaff:"Collected by", collectorOffice:"Office",
@@ -925,6 +921,7 @@
       logoutBtnLabel:"Sign Out", noLinesAssigned:"You don't have any lines assigned yet. Please ask Office to assign you a line.",
       optPaid:"Paid", optUnpaid:"Unpaid", optSuspended:"Suspended",
       modeCash:"Cash", modeUpi:"UPI", modeMonthsTotalLabel:"Total to collect:",
+      confirmMarkPaid:"Mark {name} as PAID?\n\nAmount: {amount} ({mode})\nPeriod: {from} to {to}\n\nThis will update their status immediately.",
       removeBtn:"🗑 Remove", billBtn:"🧾 Generate Bill", saveCustomerBtn:"Save Customer",
       receiptTitle:"Billing Receipt", receiptSub:"Preview before printing or sending",
       printBtn:"🖨 Print", sendBtn:"📩 Send on WhatsApp", sendSmsBtn:"📱 Send SMS", sessionOfficeId:"Office ID",
@@ -984,7 +981,7 @@
       lblModeName:"பெயர்", lblModeMobile:"மொபைல்", lblModePlanAmount:"திட்ட தொகை (₹)", lblModeAmountReceived:"பெறப்பட்ட தொகை (₹)",
       lblModePeriod:"எந்த காலத்திற்கு", lblModeFrom:"தொடக்கம்", lblModeTo:"முடிவு", lblModeDatePaid:"செலுத்திய தேதி", lblModeCurrentDate:"இன்றைய தேதி",
       lblModeStb:"STB / பாக்ஸ் எண்", lblModeStatus:"நிலை", lblModeLastPayment:"கடைசி கட்டணம் (புதியது)", lblModeNextPayment:"அடுத்த கட்டணம்",
-      lblModeNotes:"குறிப்புகள் (விருப்பம்)", lblModeMode:"முறை",
+      lblModeMode:"முறை",
       staffBtn:"👤 ஊழியர்", staffTitle:"ஊழியர்களை நிர்வகி", staffSub:"பணம் வசூலிக்கும் நபர்களின் பெயர்களைச் சேர்க்கவும்",
       lblNewStaff:"புதிய ஊழியர் பெயர்", addStaffBtn:"➕ ஊழியரைச் சேர்", staffExists:"இந்த பெயர் ஏற்கனவே உள்ளது.",
       staffAdded:"ஊழியர் வெற்றிகரமாக சேர்க்கப்பட்டார்.", deleteStaffBtn:"நீக்கு", reportByStaff:"வசூலித்தவர்", collectorOffice:"அலுவலகம்",
@@ -1008,6 +1005,7 @@
       logoutBtnLabel:"வெளியேறு", noLinesAssigned:"உங்களுக்கு இன்னும் வரிசைகள் ஒதுக்கப்படவில்லை. அலுவலகத்தை கேட்கவும்.",
       optPaid:"செலுத்தப்பட்டது", optUnpaid:"செலுத்தப்படவில்லை", optSuspended:"இடைநிறுத்தப்பட்டது",
       modeCash:"பணமாக", modeUpi:"UPI", modeMonthsTotalLabel:"மொத்தம் வசூலிக்க வேண்டியது:",
+      confirmMarkPaid:"{name} அவர்களை செலுத்தியதாக குறிக்கவா?\n\nதொகை: {amount} ({mode})\nகாலம்: {from} முதல் {to} வரை\n\nஇது உடனடியாக நிலையை புதுப்பிக்கும்.",
       removeBtn:"🗑 நீக்கு", billBtn:"🧾 பில் உருவாக்கு", saveCustomerBtn:"வாடிக்கையாளரை சேமி",
       receiptTitle:"பில் ரசீது", receiptSub:"அச்சிடும் முன் அல்லது அனுப்பும் முன் பார்வையிடவும்",
       printBtn:"🖨 அச்சிடு", sendBtn:"📩 WhatsApp வழியாக அனுப்பு", sendSmsBtn:"📱 SMS அனுப்பு", sessionOfficeId:"ஆஃபீஸ் ஐடி",
@@ -1289,7 +1287,6 @@
     document.getElementById("lblModeLastPayment").textContent = t("lblModeLastPayment");
     document.getElementById("lblModeNextPayment").textContent = t("lblModeNextPayment");
     document.getElementById("lblModeCurrentDate").textContent = t("lblModeCurrentDate");
-    document.getElementById("lblModeNotes").textContent = t("lblModeNotes");
     document.getElementById("lblModeMode").textContent = t("lblModeMode");
     document.getElementById("staffBtn").textContent = t("staffBtn");
     document.getElementById("staffTitle").textContent = t("staffTitle");
@@ -1823,7 +1820,6 @@
     document.getElementById("modeCurrentDateDisplay").value = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
     var periodStart = c.dueDate || c.lastPaid || today;
     document.getElementById("modePeriodFrom").value = periodStart;
-    document.getElementById("modeNotes").value = "";
     modeAmountTouched = false; modeToTouched = false;
     updateModeCalculatedFields();
     showOverlay("modeOverlay");
@@ -1843,6 +1839,15 @@
       var periodFrom = document.getElementById("modePeriodFrom").value || c.dueDate || c.lastPaid || todayStr();
       var periodTo = document.getElementById("modePeriodTo").value || addMonthsToDate(periodFrom, months);
       var datePaid = document.getElementById("modeDatePaid").value || todayStr();
+      // Confirm before finalizing — this can't be undone by re-clicking, so a
+      // stray tap shouldn't be able to silently bill someone.
+      var confirmMsg = t("confirmMarkPaid")
+        .replace("{name}", c.name || id)
+        .replace("{amount}", fmtMoney(collectedAmt))
+        .replace("{mode}", t(m === "Cash" ? "modeCash" : "modeUpi"))
+        .replace("{from}", fmtPeriodDate(periodFrom))
+        .replace("{to}", fmtPeriodDate(periodTo));
+      if(!confirm(confirmMsg)) return;
       // Snapshot exactly how this customer looked right before this payment, so
       // Office can undo just this one transaction later if it was entered wrong.
       var prevState = {
@@ -1859,7 +1864,6 @@
       c.monthsPaid = months;
       c.periodFrom = periodFrom;
       c.periodTo = periodTo;
-      c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
       logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
         { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount,
