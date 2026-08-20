@@ -563,9 +563,15 @@
         </div>
       </div>
     </div>
-    <div class="field">
-      <label id="lblModeLastPayment">Last Payment (new)</label>
-      <input id="modeLastPaymentDisplay" type="text" disabled />
+    <div class="row2">
+      <div class="field">
+        <label id="lblModeLastPayment">Last Payment (new)</label>
+        <input id="modeLastPaymentDisplay" type="text" disabled />
+      </div>
+      <div class="field">
+        <label id="lblModeNextPayment">Next Payment</label>
+        <input id="modeNextPaymentDisplay" type="text" disabled />
+      </div>
     </div>
     <div class="row2">
       <div class="field">
@@ -580,6 +586,10 @@
     <div class="field" id="modeCollectorField">
       <label id="lblModeCollector">Collected By</label>
       <select id="modeCollectorSelect"></select>
+    </div>
+    <div class="field">
+      <label id="lblModeNotes">Notes (optional)</label>
+      <textarea id="modeNotes" rows="2"></textarea>
     </div>
     <div class="field">
       <label id="lblModeMode">Mode</label>
@@ -943,11 +953,6 @@
       activityBtnLabel:"Activity", activityTitle:"Activity Log", activitySub:"Recent changes made in this app",
       manualBtnLabel:"Manual", manualTitle:"User Manual", manualSub:"How to use this app",
       actionAdded:"Added customer", actionUpdated:"Updated customer", actionRemoved:"Removed customer", actionPaid:"Marked Paid", actionAutoUnpaid:"Auto-marked Unpaid (due date passed)",
-      actionPaymentCancelled:"Payment Cancelled",
-      confirmMarkPaidMsg:"Mark {name} as Paid — {amount} received via {mode}?",
-      quickCancelPay:"↩ Cancel Payment",
-      confirmCancelPayMsg:"Cancel the last payment for {name} ({amount})? This will revert their status, due date and amount back to before that payment.",
-      cancelPayLogMsg:"Reversed a wrongly-made payment of {amount}",
       noActivity:"No activity recorded yet.",
       lblActivityFrom:"From", lblActivityTo:"To", activityClearBtn:"Show All", activityDownloadBtn:"⬇ Download",
       activityTodayBtn:"Today", activityLast7Btn:"Last 7 Days", activityLast15Btn:"Last 15 Days", activityThisMonthBtn:"This Month",
@@ -1026,11 +1031,6 @@
       activityBtnLabel:"செயல்பாடு", activityTitle:"செயல்பாட்டு பதிவு", activitySub:"இந்த பயன்பாட்டில் சமீபத்திய மாற்றங்கள்",
       manualBtnLabel:"கையேடு", manualTitle:"பயனர் கையேடு", manualSub:"இந்த ஆப்பை எப்படி பயன்படுத்துவது",
       actionAdded:"வாடிக்கையாளர் சேர்க்கப்பட்டார்", actionUpdated:"வாடிக்கையாளர் புதுப்பிக்கப்பட்டார்", actionRemoved:"வாடிக்கையாளர் நீக்கப்பட்டார்", actionPaid:"செலுத்தியதாக குறிக்கப்பட்டது", actionAutoUnpaid:"தானாக செலுத்தாதது எனக் குறிக்கப்பட்டது",
-      actionPaymentCancelled:"பணம் செலுத்தியது ரத்து செய்யப்பட்டது",
-      confirmMarkPaidMsg:"{name} க்கு {amount} {mode} மூலம் பெறப்பட்டதாக செலுத்தியதாக குறிக்கவா?",
-      quickCancelPay:"↩ பணம் ரத்து",
-      confirmCancelPayMsg:"{name} க்கான கடைசி பணம் செலுத்துதலை ({amount}) ரத்து செய்யவா? இது நிலை, அடுத்த தேதி மற்றும் தொகையை முந்தைய நிலைக்கு மாற்றும்.",
-      cancelPayLogMsg:"தவறாக செலுத்தப்பட்ட {amount} ரத்து செய்யப்பட்டது",
       noActivity:"இன்னும் செயல்பாடுகள் பதிவு செய்யப்படவில்லை.",
       lblActivityFrom:"தொடக்கம்", lblActivityTo:"முடிவு", activityClearBtn:"அனைத்தும் காட்டு", activityDownloadBtn:"⬇ பதிவிறக்கு",
       activityTodayBtn:"இன்று", activityLast7Btn:"கடந்த 7 நாட்கள்", activityLast15Btn:"கடந்த 15 நாட்கள்", activityThisMonthBtn:"இந்த மாதம்",
@@ -1156,10 +1156,7 @@
     session: null,
     activityLog: []
   };
-  var fbApp = null, fbDb = null, syncRefs = {}, syncEnabled = false, isApplyingRemote = false;
-  var applyingRemoteCount = 0;
-  function beginApplyingRemote(){ applyingRemoteCount++; isApplyingRemote = true; }
-  function endApplyingRemote(){ applyingRemoteCount = Math.max(0, applyingRemoteCount - 1); isApplyingRemote = applyingRemoteCount > 0; }
+  var fbApp = null, fbDb = null, syncRef = null, syncEnabled = false, isApplyingRemote = false;
 
   function t(key){ return (I18N[state.lang] && I18N[state.lang][key] !== undefined) ? I18N[state.lang][key] : I18N.en[key]; }
 
@@ -1207,31 +1204,19 @@
     if(state.session) localStorage.setItem(SESSION_KEY, JSON.stringify(state.session));
     else localStorage.removeItem(SESSION_KEY);
   }
-  // Each save*() function persists locally right away, then pushes only the
-  // piece that changed to the cloud (when connected) — never the whole
-  // dataset. Pushing everything on every save is what caused one device's
-  // save to silently overwrite another device's more recent changes.
-  function saveData(ids){
-    localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
-    if(!ids) return;
-    (Array.isArray(ids) ? ids : [ids]).forEach(function(id){ pushCustomerToCloud(id); });
-  }
-  function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); pushSettingsToCloud(); }
-  function saveCategories(){ localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories)); pushCategoriesToCloud(); }
-  function saveStaff(){ localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff)); pushStaffToCloud(); }
-  function saveActivity(entry){
-    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
-    if(entry) pushActivityEntryToCloud(entry);
-  }
+  function saveData(){ localStorage.setItem(DATA_KEY, JSON.stringify(state.data)); pushToCloud(); }
+  function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); pushToCloud(); }
+  function saveCategories(){ localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories)); pushToCloud(); }
+  function saveStaff(){ localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff)); pushToCloud(); }
+  function saveActivity(){ localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog)); pushToCloud(); }
   function logActivity(action, boxId, customerName, extra, meta){
     var actor = "Unknown";
     if(state.session){ actor = state.session.role === "office" ? "Office" : state.session.staffName; }
-    var entry = { id: Date.now() + "_" + Math.random().toString(36).slice(2,8), time: Date.now(), actor: actor, action: action, box: boxId, name: customerName || "", extra: extra || "" };
+    var entry = { time: Date.now(), actor: actor, action: action, box: boxId, name: customerName || "", extra: extra || "" };
     if(meta) entry.meta = meta;
     state.activityLog.unshift(entry);
     if(state.activityLog.length > 300){ state.activityLog = state.activityLog.slice(0, 300); }
-    saveActivity(entry);
-    return entry;
+    saveActivity();
   }
   function saveLang(){ localStorage.setItem(LANG_KEY, state.lang); }
   function nextInvoiceNumber(){
@@ -1291,7 +1276,9 @@
     document.getElementById("lblModeStb").textContent = t("lblModeStb");
     document.getElementById("lblModeStatus").textContent = t("lblModeStatus");
     document.getElementById("lblModeLastPayment").textContent = t("lblModeLastPayment");
+    document.getElementById("lblModeNextPayment").textContent = t("lblModeNextPayment");
     document.getElementById("lblModeCurrentDate").textContent = t("lblModeCurrentDate");
+    document.getElementById("lblModeNotes").textContent = t("lblModeNotes");
     document.getElementById("lblModeMode").textContent = t("lblModeMode");
     document.getElementById("staffBtn").textContent = t("staffBtn");
     document.getElementById("staffTitle").textContent = t("staffTitle");
@@ -1743,22 +1730,16 @@
     }
     box.className = "box status-" + c.status;
     var amt = fmtMoney(c.amount);
-    var cancelBtnHtml = c.lastPaymentSnapshot
-      ? "<button data-act='cancelpay' style='color:#B23A2E;'>"+t("quickCancelPay")+"</button>"
-      : "";
     box.innerHTML =
       "<div><div class='boxno'>"+id+"</div><div class='cname'>"+escapeHtml(c.name||"(no name)")+"</div><div class='cmobile'>"+escapeHtml(c.mobile||"—")+"</div></div>" +
       "<div><div class='camount'>"+amt+" /mo</div><div class='cquick'>" +
         "<button data-act='bill' style='font-weight:900;text-decoration:underline;'>"+t("quickBill")+"</button>" +
         "<button data-act='paid'>"+t("quickMarkPaid")+"</button>" +
         "<button data-act='edit'>"+t("quickEdit")+"</button>" +
-        cancelBtnHtml +
       "</div></div>";
     box.querySelector("[data-act='edit']").addEventListener("click", function(ev){ ev.stopPropagation(); openCustomerModal(id, c); });
     box.querySelector("[data-act='bill']").addEventListener("click", function(ev){ ev.stopPropagation(); openReceipt(id, c); });
     box.querySelector("[data-act='paid']").addEventListener("click", function(ev){ ev.stopPropagation(); openModePopup(id); });
-    var cancelBtn = box.querySelector("[data-act='cancelpay']");
-    if(cancelBtn) cancelBtn.addEventListener("click", function(ev){ ev.stopPropagation(); cancelLastPayment(id); });
     box.addEventListener("click", function(){ openCustomerModal(id, c); });
     return box;
   }
@@ -1798,6 +1779,7 @@
     }
     var periodToNow = document.getElementById("modePeriodTo").value;
     document.getElementById("modeLastPaymentDisplay").value = fmtPeriodDate(periodToNow);
+    document.getElementById("modeNextPaymentDisplay").value = fmtPeriodDate(addMonthsToDate(periodToNow, 1));
   }
   function openModePopup(id){
     modePopupTargetId = id;
@@ -1824,8 +1806,9 @@
     var today = todayStr();
     document.getElementById("modeDatePaid").value = today;
     document.getElementById("modeCurrentDateDisplay").value = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
-    var periodStart = (c.dueDate && c.dueDate > today) ? c.dueDate : today;
+    var periodStart = c.dueDate || c.lastPaid || today;
     document.getElementById("modePeriodFrom").value = periodStart;
+    document.getElementById("modeNotes").value = "";
     modeAmountTouched = false; modeToTouched = false;
     updateModeCalculatedFields();
     showOverlay("modeOverlay");
@@ -1844,28 +1827,7 @@
       var collectedAmt = Number(document.getElementById("modeAmountReceived").value) || 0;
       var periodFrom = document.getElementById("modePeriodFrom").value || c.dueDate || c.lastPaid || todayStr();
       var periodTo = document.getElementById("modePeriodTo").value || addMonthsToDate(periodFrom, months);
-      var todayNow = todayStr();
-      // Marking someone Paid should never leave them with a due date that's
-      // already in the past — that makes the daily due-date check flip them
-      // straight back to Unpaid, so the box never actually stays green.
-      if(periodTo <= todayNow){ periodTo = addMonthsToDate(todayNow, months); }
       var datePaid = document.getElementById("modeDatePaid").value || todayStr();
-
-      var confirmMsg = t("confirmMarkPaidMsg")
-        .replace("{name}", c.name || id)
-        .replace("{amount}", fmtMoney(collectedAmt))
-        .replace("{mode}", m);
-      if(!window.confirm(confirmMsg)) return;
-
-      // Snapshot exactly what this customer looked like right before this
-      // payment, so it can be undone with "Cancel Payment" if it was made
-      // by mistake (wrong amount, wrong customer, wrong mode, etc).
-      var snapshot = {
-        status: c.status, lastPaid: c.lastPaid, dueDate: c.dueDate, mode: c.mode,
-        collector: c.collector, lastPaidAmount: c.lastPaidAmount, monthsPaid: c.monthsPaid,
-        periodFrom: c.periodFrom, periodTo: c.periodTo, paidRecordedOn: c.paidRecordedOn
-      };
-
       c.status = "paid";
       c.lastPaid = periodTo;
       c.dueDate = periodTo;
@@ -1875,31 +1837,13 @@
       c.monthsPaid = months;
       c.periodFrom = periodFrom;
       c.periodTo = periodTo;
+      c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
-      c.lastPaymentSnapshot = snapshot;
-      var logEntry = logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
+      logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
         { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount });
-      c.lastPaymentLogId = logEntry.id;
-      saveData(id); hideOverlay("modeOverlay"); renderAll();
+      saveData(); hideOverlay("modeOverlay"); renderAll();
     });
   });
-
-  // ---------- Cancel a wrongly-made payment ----------
-  function cancelLastPayment(id){
-    var c = state.data[id];
-    if(!c || !c.lastPaymentSnapshot) return;
-    var amt = fmtMoney(c.lastPaidAmount);
-    if(!window.confirm(t("confirmCancelPayMsg").replace("{name}", c.name || id).replace("{amount}", amt))) return;
-    var snap = c.lastPaymentSnapshot;
-    c.status = snap.status; c.lastPaid = snap.lastPaid; c.dueDate = snap.dueDate;
-    c.mode = snap.mode; c.collector = snap.collector; c.lastPaidAmount = snap.lastPaidAmount;
-    c.monthsPaid = snap.monthsPaid; c.periodFrom = snap.periodFrom; c.periodTo = snap.periodTo;
-    c.paidRecordedOn = snap.paidRecordedOn;
-    delete c.lastPaymentSnapshot;
-    delete c.lastPaymentLogId;
-    logActivity("payment-cancelled", id, c.name, t("cancelPayLogMsg").replace("{amount}", amt));
-    saveData(id); renderAll();
-  }
 
   // ---------- Customer Modal ----------
   var pendingStatus = "unpaid";
@@ -2018,15 +1962,10 @@
     if(pendingStatus === "paid" && !lastPaidVal){
       lastPaidVal = wasAlreadyPaid ? (prev.lastPaid || prev.paidRecordedOn || todayStr()) : todayStr();
     }
-    var dueDateVal = document.getElementById("fDueDate").value;
-    if(pendingStatus === "paid" && dueDateVal && dueDateVal <= todayStr()){
-      alert("Next Due Date must be a date after today when marking a customer Paid. With today's or an earlier date, this customer will immediately flip back to Unpaid. Please pick a future Next Due Date, or use \"Mark Paid\" on their box instead, which sets this correctly.");
-      return;
-    }
     state.data[id] = Object.assign({}, prev, {
       name:name, mobile:mobile, amount:amount, status:pendingStatus,
       lastPaid: lastPaidVal,
-      dueDate: dueDateVal,
+      dueDate: document.getElementById("fDueDate").value,
       stb: document.getElementById("fStb").value.trim(),
       mode: document.getElementById("fMode").value,
       collector: collectorVal,
@@ -2041,7 +1980,7 @@
     }
     var statusLabelKeys = { paid:"optPaid", unpaid:"optUnpaid", suspended:"optSuspended" };
     logActivity(isNew ? "added" : "updated", id, name, fmtMoney(amount) + " · " + t(statusLabelKeys[pendingStatus] || "optUnpaid"));
-    saveData(id); hideOverlay("customerOverlay"); renderAll();
+    saveData(); hideOverlay("customerOverlay"); renderAll();
   });
   document.getElementById("deleteCustBtn").addEventListener("click", function(){
     var id = state.activeBox;
@@ -2049,7 +1988,7 @@
     var oldName = state.data[id] ? state.data[id].name : "";
     delete state.data[id];
     logActivity("removed", id, oldName, "");
-    saveData(id); hideOverlay("customerOverlay"); renderAll();
+    saveData(); hideOverlay("customerOverlay"); renderAll();
   });
   document.getElementById("billFromModalBtn").addEventListener("click", function(){
     var id = state.activeBox; var c = state.data[id];
@@ -2337,12 +2276,7 @@
         if(payload.categories && payload.categories.length){ state.categories = payload.categories; }
         if(payload.staff && payload.staff.length){ state.staff = payload.staff; }
         if(payload.activityLog && payload.activityLog.length){ state.activityLog = payload.activityLog; }
-        localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
-        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories));
-        localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff));
-        localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
-        pushFullSnapshotToCloud();
+        saveData(); saveSettings(); saveCategories(); saveStaff(); saveActivity();
         document.getElementById("shopNameInput").value = state.settings.shopName;
         state.activeCat = state.categories[0].code;
         renderAll();
@@ -2731,118 +2665,38 @@
   }
 
   function attachSyncListener(roomId){
-    detachSyncListeners();
-    var base = "cabletv_shops/" + roomId;
-
-    syncRefs.data = fbDb.ref(base + "/data");
-    syncRefs.data.on("value", function(snapshot){
+    if(syncRef){ try{ syncRef.off(); }catch(e){} }
+    syncRef = fbDb.ref("cabletv_shops/" + roomId);
+    syncRef.on("value", function(snapshot){
+      var val = snapshot.val();
       updateSyncStatus("connected");
-      beginApplyingRemote();
-      state.data = snapshot.val() || {};
-      localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
-      renderAll();
-      endApplyingRemote();
-    }, function(){ updateSyncStatus("error"); });
-
-    syncRefs.settings = fbDb.ref(base + "/settings");
-    syncRefs.settings.on("value", function(snapshot){
-      var val = snapshot.val();
       if(!val) return;
-      beginApplyingRemote();
-      state.settings = Object.assign(state.settings, val);
+      isApplyingRemote = true;
+      if(val.data) state.data = val.data;
+      if(val.settings) state.settings = Object.assign(state.settings, val.settings);
+      if(val.categories && val.categories.length) state.categories = val.categories;
+      if(val.staff && val.staff.length) state.staff = val.staff;
+      if(val.activityLog && val.activityLog.length) state.activityLog = val.activityLog;
+      localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
-      document.getElementById("shopNameInput").value = state.settings.shopName || "";
-      renderAll();
-      endApplyingRemote();
-    });
-
-    syncRefs.categories = fbDb.ref(base + "/categories");
-    syncRefs.categories.on("value", function(snapshot){
-      var val = snapshot.val();
-      if(!val || !val.length) return;
-      beginApplyingRemote();
-      state.categories = val;
       localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories));
+      localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff));
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
+      document.getElementById("shopNameInput").value = state.settings.shopName;
       if(!state.categories.some(function(c){ return c.code === state.activeCat; })){
         state.activeCat = state.categories[0].code;
       }
-      renderAll();
-      endApplyingRemote();
-    });
-
-    syncRefs.staff = fbDb.ref(base + "/staff");
-    syncRefs.staff.on("value", function(snapshot){
-      var val = snapshot.val();
-      if(!val || !val.length) return;
-      beginApplyingRemote();
-      state.staff = val;
-      localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff));
       populateStaffDropdowns();
-      endApplyingRemote();
-    });
-
-    syncRefs.activityLog = fbDb.ref(base + "/activityLog");
-    syncRefs.activityLog.on("value", function(snapshot){
-      var val = snapshot.val();
-      if(!val) return;
-      beginApplyingRemote();
-      // Stored as an object keyed by each entry's own id, so two devices'
-      // log entries always coexist instead of one overwriting the other.
-      var list = Object.keys(val).map(function(k){ return val[k]; });
-      list.sort(function(a,b){ return (b.time || 0) - (a.time || 0); });
-      state.activityLog = list.slice(0, 300);
-      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
-      endApplyingRemote();
-    });
+      renderAll();
+      isApplyingRemote = false;
+    }, function(){ updateSyncStatus("error"); });
   }
 
-  function detachSyncListeners(){
-    Object.keys(syncRefs).forEach(function(k){
-      try{ syncRefs[k].off(); }catch(e){}
-    });
-    syncRefs = {};
-  }
-
-  function pushCustomerToCloud(id){
+  function pushToCloud(){
     if(!syncEnabled || !fbDb || isApplyingRemote) return;
     var conf = loadSyncConfig();
     if(!conf) return;
-    var val = state.data[id];
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/data/" + id).set(val === undefined ? null : val);
-  }
-  function pushSettingsToCloud(){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
-    var conf = loadSyncConfig();
-    if(!conf) return;
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/settings").set(state.settings);
-  }
-  function pushCategoriesToCloud(){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
-    var conf = loadSyncConfig();
-    if(!conf) return;
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/categories").set(state.categories);
-  }
-  function pushStaffToCloud(){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
-    var conf = loadSyncConfig();
-    if(!conf) return;
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/staff").set(state.staff);
-  }
-  function pushActivityEntryToCloud(entry){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
-    var conf = loadSyncConfig();
-    if(!conf) return;
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/activityLog/" + entry.id).set(entry);
-  }
-  // Full-room overwrite — used ONLY to seed a brand-new empty sync room with
-  // this device's existing local data. Never called from a normal save.
-  function pushFullSnapshotToCloud(){
-    if(!syncEnabled || !fbDb) return;
-    var conf = loadSyncConfig();
-    if(!conf) return;
-    var activityById = {};
-    state.activityLog.forEach(function(e){ activityById[e.id] = e; });
-    var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: activityById, updatedAt: Date.now() };
+    var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: state.activityLog, updatedAt: Date.now() };
     fbDb.ref("cabletv_shops/" + conf.roomId).set(payload);
   }
 
@@ -2855,16 +2709,8 @@
         fbDb = firebase.database();
         syncEnabled = true;
         saveSyncConfig({ config:configObj, roomId:roomId, enabled:true });
-        var baseRef = fbDb.ref("cabletv_shops/" + roomId);
-        baseRef.once("value").then(function(snap){
-          attachSyncListener(roomId);
-          if(!snap.exists()){
-            // Brand-new sync room — seed it with whatever this device already has.
-            pushFullSnapshotToCloud();
-          }
-        }).catch(function(){
-          attachSyncListener(roomId);
-        });
+        attachSyncListener(roomId);
+        if(!silent){ pushToCloud(); }
       }catch(err){
         updateSyncStatus("error");
         if(!silent) alert(t("syncErrorMsg"));
@@ -2905,7 +2751,7 @@
     connectSync(configObj, roomId, false);
   });
   document.getElementById("syncDisconnectBtn").addEventListener("click", function(){
-    detachSyncListeners();
+    if(syncRef){ try{ syncRef.off(); }catch(e){} syncRef = null; }
     syncEnabled = false;
     clearSyncConfig();
     updateSyncStatus("off");
@@ -3164,7 +3010,7 @@
     var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
     return y + "-" + m + "-" + day;
   }
-  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid", "payment-cancelled":"actionPaymentCancelled" };
+  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid" };
 
   function getFilteredActivity(){
     var fromDate = document.getElementById("activityDateFrom").value;
@@ -3364,16 +3210,16 @@
   // flipped to "unpaid" (green -> red). Suspended customers are untouched.
   function applyDueDateFlips(){
     var today = todayStr();
-    var changedIds = [];
+    var changed = false;
     Object.keys(state.data).forEach(function(id){
       var c = state.data[id];
       if(c.status === "paid" && c.dueDate && c.dueDate < today){
         c.status = "unpaid";
-        changedIds.push(id);
+        changed = true;
         logActivity("auto-unpaid", id, c.name, "Due date " + c.dueDate + " passed");
       }
     });
-    if(changedIds.length) saveData(changedIds);
+    if(changed) saveData();
   }
 
   // ---------- Init ----------
