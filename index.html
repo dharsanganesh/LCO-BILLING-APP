@@ -953,6 +953,10 @@
       activityBtnLabel:"Activity", activityTitle:"Activity Log", activitySub:"Recent changes made in this app",
       manualBtnLabel:"Manual", manualTitle:"User Manual", manualSub:"How to use this app",
       actionAdded:"Added customer", actionUpdated:"Updated customer", actionRemoved:"Removed customer", actionPaid:"Marked Paid", actionAutoUnpaid:"Auto-marked Unpaid (due date passed)",
+      actionPaymentCancelled:"Payment Cancelled",
+      quickCancelPay:"↩ Cancel Payment",
+      confirmCancelPayMsg:"Cancel the last payment for {name} ({amount})? This will revert their status, due date and amount back to before that payment.",
+      cancelPayLogMsg:"Reversed a wrongly-made payment of {amount}",
       noActivity:"No activity recorded yet.",
       lblActivityFrom:"From", lblActivityTo:"To", activityClearBtn:"Show All", activityDownloadBtn:"⬇ Download",
       activityTodayBtn:"Today", activityLast7Btn:"Last 7 Days", activityLast15Btn:"Last 15 Days", activityThisMonthBtn:"This Month",
@@ -1031,6 +1035,10 @@
       activityBtnLabel:"செயல்பாடு", activityTitle:"செயல்பாட்டு பதிவு", activitySub:"இந்த பயன்பாட்டில் சமீபத்திய மாற்றங்கள்",
       manualBtnLabel:"கையேடு", manualTitle:"பயனர் கையேடு", manualSub:"இந்த ஆப்பை எப்படி பயன்படுத்துவது",
       actionAdded:"வாடிக்கையாளர் சேர்க்கப்பட்டார்", actionUpdated:"வாடிக்கையாளர் புதுப்பிக்கப்பட்டார்", actionRemoved:"வாடிக்கையாளர் நீக்கப்பட்டார்", actionPaid:"செலுத்தியதாக குறிக்கப்பட்டது", actionAutoUnpaid:"தானாக செலுத்தாதது எனக் குறிக்கப்பட்டது",
+      actionPaymentCancelled:"பணம் செலுத்தியது ரத்து செய்யப்பட்டது",
+      quickCancelPay:"↩ பணம் ரத்து",
+      confirmCancelPayMsg:"{name} க்கான கடைசி பணம் செலுத்துதலை ({amount}) ரத்து செய்யவா? இது நிலை, அடுத்த தேதி மற்றும் தொகையை முந்தைய நிலைக்கு மாற்றும்.",
+      cancelPayLogMsg:"தவறாக செலுத்தப்பட்ட {amount} ரத்து செய்யப்பட்டது",
       noActivity:"இன்னும் செயல்பாடுகள் பதிவு செய்யப்படவில்லை.",
       lblActivityFrom:"தொடக்கம்", lblActivityTo:"முடிவு", activityClearBtn:"அனைத்தும் காட்டு", activityDownloadBtn:"⬇ பதிவிறக்கு",
       activityTodayBtn:"இன்று", activityLast7Btn:"கடந்த 7 நாட்கள்", activityLast15Btn:"கடந்த 15 நாட்கள்", activityThisMonthBtn:"இந்த மாதம்",
@@ -1730,16 +1738,22 @@
     }
     box.className = "box status-" + c.status;
     var amt = fmtMoney(c.amount);
+    var cancelBtnHtml = (isOffice() && c.lastPaymentSnapshot)
+      ? "<button data-act='cancelpay' style='color:#B23A2E;'>"+t("quickCancelPay")+"</button>"
+      : "";
     box.innerHTML =
       "<div><div class='boxno'>"+id+"</div><div class='cname'>"+escapeHtml(c.name||"(no name)")+"</div><div class='cmobile'>"+escapeHtml(c.mobile||"—")+"</div></div>" +
       "<div><div class='camount'>"+amt+" /mo</div><div class='cquick'>" +
         "<button data-act='bill' style='font-weight:900;text-decoration:underline;'>"+t("quickBill")+"</button>" +
         "<button data-act='paid'>"+t("quickMarkPaid")+"</button>" +
         "<button data-act='edit'>"+t("quickEdit")+"</button>" +
+        cancelBtnHtml +
       "</div></div>";
     box.querySelector("[data-act='edit']").addEventListener("click", function(ev){ ev.stopPropagation(); openCustomerModal(id, c); });
     box.querySelector("[data-act='bill']").addEventListener("click", function(ev){ ev.stopPropagation(); openReceipt(id, c); });
     box.querySelector("[data-act='paid']").addEventListener("click", function(ev){ ev.stopPropagation(); openModePopup(id); });
+    var cancelBtn = box.querySelector("[data-act='cancelpay']");
+    if(cancelBtn) cancelBtn.addEventListener("click", function(ev){ ev.stopPropagation(); cancelLastPayment(id); });
     box.addEventListener("click", function(){ openCustomerModal(id, c); });
     return box;
   }
@@ -1828,6 +1842,17 @@
       var periodFrom = document.getElementById("modePeriodFrom").value || c.dueDate || c.lastPaid || todayStr();
       var periodTo = document.getElementById("modePeriodTo").value || addMonthsToDate(periodFrom, months);
       var datePaid = document.getElementById("modeDatePaid").value || todayStr();
+
+      // Snapshot exactly what this customer looked like right before this
+      // payment, so Office can undo it with "Cancel Payment" if it was
+      // made by mistake (wrong amount, wrong customer, wrong mode, etc).
+      var snapshot = {
+        status: c.status, lastPaid: c.lastPaid, dueDate: c.dueDate, mode: c.mode,
+        collector: c.collector, lastPaidAmount: c.lastPaidAmount, monthsPaid: c.monthsPaid,
+        periodFrom: c.periodFrom, periodTo: c.periodTo, lastBillingNote: c.lastBillingNote,
+        paidRecordedOn: c.paidRecordedOn
+      };
+
       c.status = "paid";
       c.lastPaid = periodTo;
       c.dueDate = periodTo;
@@ -1839,11 +1864,28 @@
       c.periodTo = periodTo;
       c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
+      c.lastPaymentSnapshot = snapshot;
       logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
         { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount });
       saveData(); hideOverlay("modeOverlay"); renderAll();
     });
   });
+
+  // ---------- Cancel a wrongly-made payment (Office only) ----------
+  function cancelLastPayment(id){
+    var c = state.data[id];
+    if(!c || !c.lastPaymentSnapshot) return;
+    var amt = fmtMoney(c.lastPaidAmount);
+    if(!window.confirm(t("confirmCancelPayMsg").replace("{name}", c.name || id).replace("{amount}", amt))) return;
+    var snap = c.lastPaymentSnapshot;
+    c.status = snap.status; c.lastPaid = snap.lastPaid; c.dueDate = snap.dueDate;
+    c.mode = snap.mode; c.collector = snap.collector; c.lastPaidAmount = snap.lastPaidAmount;
+    c.monthsPaid = snap.monthsPaid; c.periodFrom = snap.periodFrom; c.periodTo = snap.periodTo;
+    c.lastBillingNote = snap.lastBillingNote; c.paidRecordedOn = snap.paidRecordedOn;
+    delete c.lastPaymentSnapshot;
+    logActivity("payment-cancelled", id, c.name, t("cancelPayLogMsg").replace("{amount}", amt));
+    saveData(); renderAll();
+  }
 
   // ---------- Customer Modal ----------
   var pendingStatus = "unpaid";
@@ -3010,7 +3052,7 @@
     var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
     return y + "-" + m + "-" + day;
   }
-  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid" };
+  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid", "payment-cancelled":"actionPaymentCancelled" };
 
   function getFilteredActivity(){
     var fromDate = document.getElementById("activityDateFrom").value;
