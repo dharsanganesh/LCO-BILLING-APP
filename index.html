@@ -704,6 +704,15 @@
       <button class="btn btn-outline btn-sm" id="reportThisMonthBtn">This Month</button>
     </div>
 
+    <div class="field" style="margin-bottom:10px;">
+      <label id="lblReportMode">Mode</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="reportModeFilterRow"></div>
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label id="lblReportCollector">Collected By</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;" id="reportCollectorFilterRow"></div>
+    </div>
+
     <div class="report-grid" id="reportGrid"></div>
 
     <div class="pie-wrap">
@@ -923,7 +932,8 @@
       loginHint:"First time on this device? Office default PIN is 1234 — change it in Shop Details after signing in.",
       loginWrongPin:"Incorrect PIN. Please try again.",
       logoutBtnLabel:"Sign Out", noLinesAssigned:"You don't have any lines assigned yet. Please ask Office to assign you a line.",
-      optPaid:"Paid", optUnpaid:"Unpaid", optSuspended:"Suspended",
+      optPaid:"Paid", optUnpaid:"Unpaid", optSuspended:"Suspended", optAll:"All",
+      lblReportMode:"Mode", lblReportCollector:"Collected By",
       modeCash:"Cash", modeUpi:"UPI", modeMonthsTotalLabel:"Total to collect:",
       removeBtn:"🗑 Remove", billBtn:"🧾 Generate Bill", saveCustomerBtn:"Save Customer",
       receiptTitle:"Billing Receipt", receiptSub:"Preview before printing or sending",
@@ -1005,7 +1015,8 @@
       loginHint:"முதல் முறையா? அலுவலக இயல்பு PIN 1234 — உள்நுழைந்த பிறகு கடை விவரங்களில் மாற்றவும்.",
       loginWrongPin:"தவறான PIN. மீண்டும் முயற்சிக்கவும்.",
       logoutBtnLabel:"வெளியேறு", noLinesAssigned:"உங்களுக்கு இன்னும் வரிசைகள் ஒதுக்கப்படவில்லை. அலுவலகத்தை கேட்கவும்.",
-      optPaid:"செலுத்தப்பட்டது", optUnpaid:"செலுத்தப்படவில்லை", optSuspended:"இடைநிறுத்தப்பட்டது",
+      optPaid:"செலுத்தப்பட்டது", optUnpaid:"செலுத்தப்படவில்லை", optSuspended:"இடைநிறுத்தப்பட்டது", optAll:"அனைத்தும்",
+      lblReportMode:"முறை", lblReportCollector:"வசூலித்தவர்",
       modeCash:"பணமாக", modeUpi:"UPI", modeMonthsTotalLabel:"மொத்தம் வசூலிக்க வேண்டியது:",
       removeBtn:"🗑 நீக்கு", billBtn:"🧾 பில் உருவாக்கு", saveCustomerBtn:"வாடிக்கையாளரை சேமி",
       receiptTitle:"பில் ரசீது", receiptSub:"அச்சிடும் முன் அல்லது அனுப்பும் முன் பார்வையிடவும்",
@@ -1386,6 +1397,8 @@
     document.getElementById("reportSub").textContent = t("reportSub");
     document.getElementById("lblReportFrom").textContent = t("lblReportFrom");
     document.getElementById("lblReportTo").textContent = t("lblReportTo");
+    document.getElementById("lblReportMode").textContent = t("lblReportMode");
+    document.getElementById("lblReportCollector").textContent = t("lblReportCollector");
     document.getElementById("reportClearBtn").textContent = t("reportClearBtn");
     document.getElementById("reportTodayBtn").textContent = t("reportTodayBtn");
     document.getElementById("reportLast7Btn").textContent = t("reportLast7Btn");
@@ -2959,7 +2972,7 @@
   // total can never disagree with what's listed underneath it. Paid/unpaid/
   // suspended status counts always reflect current live status (status
   // itself has no date range).
-  function computeStatusCounts(fromDate, toDate){
+  function computeStatusCounts(fromDate, toDate, modeFilter, collectorFilter){
     var paid=0, unpaid=0, suspended=0;
     var cash=0, upi=0, office=0;
     var byStaff = {};
@@ -2979,9 +2992,11 @@
       var day = reportDayStr(e.time);
       if(fromDate && day < fromDate) return;
       if(toDate && day > toDate) return;
-      var amt = e.meta && e.meta.amount != null ? e.meta.amount : (parseFloat((e.extra||"").replace(/[^\d.]/g,"")) || 0);
       var mode = e.meta && e.meta.mode ? e.meta.mode : "cash";
+      if(modeFilter && modeFilter !== "all" && mode !== modeFilter) return;
       var who = (e.meta && e.meta.collector) ? e.meta.collector : e.actor;
+      if(collectorFilter && collectorFilter.length && collectorFilter.indexOf(who) === -1) return;
+      var amt = e.meta && e.meta.amount != null ? e.meta.amount : (parseFloat((e.extra||"").replace(/[^\d.]/g,"")) || 0);
       if(mode === "upi") upi += amt;
       else cash += amt;
       if(who){ byStaff[who] = (byStaff[who]||0) + amt; }
@@ -2990,10 +3005,48 @@
     return { paid:paid, unpaid:unpaid, suspended:suspended, cash:cash, upi:upi, office:office, byStaff:byStaff, total: paid+unpaid+suspended };
   }
 
+  var reportModeFilter = "all";
+  var reportCollectorFilter = []; // empty = no filter = everyone
+
+  function renderReportFilters(){
+    var modeRow = document.getElementById("reportModeFilterRow");
+    var modes = [["all","optAll"],["cash","reportCash"],["upi","reportUpi"]];
+    modeRow.innerHTML = modes.map(function(m){
+      var active = reportModeFilter === m[0];
+      return "<button type='button' class='btn btn-sm "+(active?"btn-outline active":"btn-outline")+"' data-mode-filter='"+m[0]+"' style='"+(active?"background:var(--accent);color:#fff;border-color:var(--accent);":"")+"'>"+t(m[1])+"</button>";
+    }).join("");
+    modeRow.querySelectorAll("[data-mode-filter]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        reportModeFilter = btn.getAttribute("data-mode-filter");
+        renderReport();
+      });
+    });
+
+    var collectorRow = document.getElementById("reportCollectorFilterRow");
+    var collectors = [{ name:"Office", label:t("collectorOffice") }];
+    state.staff.forEach(function(s){ collectors.push({ name:s.name, label:s.name }); });
+    collectorRow.innerHTML = collectors.map(function(c){
+      var checked = reportCollectorFilter.indexOf(c.name) !== -1;
+      return "<label style='display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;'>" +
+        "<input type='checkbox' data-collector-filter='"+escapeHtml(c.name)+"' "+(checked?"checked":"")+" />" +
+        escapeHtml(c.label) + "</label>";
+    }).join("");
+    collectorRow.querySelectorAll("[data-collector-filter]").forEach(function(cb){
+      cb.addEventListener("change", function(){
+        var name = cb.getAttribute("data-collector-filter");
+        var idx = reportCollectorFilter.indexOf(name);
+        if(cb.checked){ if(idx === -1) reportCollectorFilter.push(name); }
+        else{ if(idx !== -1) reportCollectorFilter.splice(idx, 1); }
+        renderReport();
+      });
+    });
+  }
+
   function renderReport(){
     var fromDate = document.getElementById("reportDateFrom").value;
     var toDate = document.getElementById("reportDateTo").value;
-    var counts = computeStatusCounts(fromDate || null, toDate || null);
+    renderReportFilters();
+    var counts = computeStatusCounts(fromDate || null, toDate || null, reportModeFilter, reportCollectorFilter);
     var totalCollection = counts.cash + counts.upi;
     var reportGrid = document.getElementById("reportGrid");
     var html =
@@ -3017,7 +3070,7 @@
       subEl.textContent = t("reportSub");
     }
     drawPie(counts);
-    renderReportDetail(fromDate, toDate);
+    renderReportDetail(fromDate, toDate, reportModeFilter, reportCollectorFilter);
   }
   function reportDayStr(ts){
     var d = new Date(ts);
@@ -3025,7 +3078,7 @@
     return y + "-" + m + "-" + day;
   }
   var lastReportDetailRows = [];
-  function renderReportDetail(fromDate, toDate){
+  function renderReportDetail(fromDate, toDate, modeFilter, collectorFilter){
     var staffOnly = state.session && state.session.role === "staff";
     var rows = state.activityLog.filter(function(e){
       if(e.action !== "paid") return false;
@@ -3034,6 +3087,10 @@
       var day = reportDayStr(e.time);
       if(fromDate && day < fromDate) return false;
       if(toDate && day > toDate) return false;
+      var mode = e.meta && e.meta.mode ? e.meta.mode : "cash";
+      if(modeFilter && modeFilter !== "all" && mode !== modeFilter) return false;
+      var who = (e.meta && e.meta.collector) ? e.meta.collector : e.actor;
+      if(collectorFilter && collectorFilter.length && collectorFilter.indexOf(who) === -1) return false;
       return true;
     });
     lastReportDetailRows = rows;
