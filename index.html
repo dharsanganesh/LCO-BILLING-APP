@@ -2051,11 +2051,16 @@
     if(pendingStatus === "paid" && !lastPaidVal){
       lastPaidVal = wasAlreadyPaid ? (prev.lastPaid || prev.paidRecordedOn || todayStr()) : todayStr();
     }
+    // Note: no auto-flip guard here on purpose — Office sometimes needs to
+    // manually correct a customer's dates/balance directly (backdating,
+    // fixing a data-entry mistake, etc.), and a past due date is a valid
+    // thing to save in that case. If someone is saved as Paid with a due
+    // date already passed, the normal daily due-date check will flip them
+    // to Unpaid the next time the app refreshes — same as any other
+    // customer whose subscription has lapsed. Mark Paid (the box button)
+    // still calculates a correct future due date on its own for normal
+    // day-to-day payments.
     var dueDateVal = document.getElementById("fDueDate").value;
-    if(pendingStatus === "paid" && dueDateVal && dueDateVal <= todayStr()){
-      alert("Next Due Date must be a date after today when marking a customer Paid. With today's or an earlier date, this customer will immediately flip back to Unpaid. Please pick a future Next Due Date, or use \"Mark Paid\" on their box instead, which sets this correctly.");
-      return;
-    }
     state.data[id] = Object.assign({}, prev, {
       name:name, mobile:mobile, amount:amount, status:pendingStatus,
       lastPaid: lastPaidVal,
