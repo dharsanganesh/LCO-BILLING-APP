@@ -357,10 +357,11 @@
       <label id="lblStatus">Payment Status</label>
       <div class="hint" id="currentStatusBadge" style="margin-bottom:6px;display:none;"></div>
       <div class="status-picker" id="statusPicker">
+        <div class="status-opt sel-paid" data-status="paid" id="optPaidPicker">Paid</div>
         <div class="status-opt sel-unpaid" data-status="unpaid" id="optUnpaid">Unpaid</div>
         <div class="status-opt sel-suspended" data-status="suspended" id="optSuspended">Suspended</div>
       </div>
-      <div class="hint" id="statusPickerHint" style="margin-top:4px;">To mark someone Paid, use "Mark Paid" on their box instead — that's what records the correct amount, date and collector.</div>
+      <div class="hint" id="statusPickerHint" style="margin-top:4px;">For a normal payment collected today, use "Mark Paid" on the box instead — it records the correct amount, date and collector automatically. Use "Paid" here only to manually correct a customer's status and dates without logging a new collection.</div>
     </div>
     <div class="row2">
       <div class="field">
@@ -704,6 +705,15 @@
       <button class="btn btn-outline btn-sm" id="reportThisMonthBtn">This Month</button>
     </div>
 
+    <div class="field" style="margin-bottom:10px;">
+      <label id="lblReportMode">Mode</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="reportModeFilterRow"></div>
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label id="lblReportCollector">Collected By</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;" id="reportCollectorFilterRow"></div>
+    </div>
+
     <div class="report-grid" id="reportGrid"></div>
 
     <div class="pie-wrap">
@@ -923,7 +933,9 @@
       loginHint:"First time on this device? Office default PIN is 1234 — change it in Shop Details after signing in.",
       loginWrongPin:"Incorrect PIN. Please try again.",
       logoutBtnLabel:"Sign Out", noLinesAssigned:"You don't have any lines assigned yet. Please ask Office to assign you a line.",
-      optPaid:"Paid", optUnpaid:"Unpaid", optSuspended:"Suspended",
+      optPaid:"Paid", optUnpaid:"Unpaid", optSuspended:"Suspended", optAll:"All",
+      statusPickerHint:"For a normal payment collected today, use \"Mark Paid\" on the box instead — it records the correct amount, date and collector automatically. Use \"Paid\" here only to manually correct a customer's status and dates without logging a new collection.",
+      lblReportMode:"Mode", lblReportCollector:"Collected By",
       modeCash:"Cash", modeUpi:"UPI", modeMonthsTotalLabel:"Total to collect:",
       removeBtn:"🗑 Remove", billBtn:"🧾 Generate Bill", saveCustomerBtn:"Save Customer",
       receiptTitle:"Billing Receipt", receiptSub:"Preview before printing or sending",
@@ -953,6 +965,10 @@
       activityBtnLabel:"Activity", activityTitle:"Activity Log", activitySub:"Recent changes made in this app",
       manualBtnLabel:"Manual", manualTitle:"User Manual", manualSub:"How to use this app",
       actionAdded:"Added customer", actionUpdated:"Updated customer", actionRemoved:"Removed customer", actionPaid:"Marked Paid", actionAutoUnpaid:"Auto-marked Unpaid (due date passed)",
+      actionPaymentCancelled:"Payment Cancelled",
+      quickCancelPay:"↩ Cancel Payment",
+      confirmCancelPayMsg:"Cancel the last payment for {name} ({amount})? This will revert their status, due date and amount back to before that payment.",
+      cancelPayLogMsg:"Reversed a wrongly-made payment of {amount}",
       noActivity:"No activity recorded yet.",
       lblActivityFrom:"From", lblActivityTo:"To", activityClearBtn:"Show All", activityDownloadBtn:"⬇ Download",
       activityTodayBtn:"Today", activityLast7Btn:"Last 7 Days", activityLast15Btn:"Last 15 Days", activityThisMonthBtn:"This Month",
@@ -1001,7 +1017,9 @@
       loginHint:"முதல் முறையா? அலுவலக இயல்பு PIN 1234 — உள்நுழைந்த பிறகு கடை விவரங்களில் மாற்றவும்.",
       loginWrongPin:"தவறான PIN. மீண்டும் முயற்சிக்கவும்.",
       logoutBtnLabel:"வெளியேறு", noLinesAssigned:"உங்களுக்கு இன்னும் வரிசைகள் ஒதுக்கப்படவில்லை. அலுவலகத்தை கேட்கவும்.",
-      optPaid:"செலுத்தப்பட்டது", optUnpaid:"செலுத்தப்படவில்லை", optSuspended:"இடைநிறுத்தப்பட்டது",
+      optPaid:"செலுத்தப்பட்டது", optUnpaid:"செலுத்தப்படவில்லை", optSuspended:"இடைநிறுத்தப்பட்டது", optAll:"அனைத்தும்",
+      statusPickerHint:"இன்று வழக்கமான கட்டணத்திற்கு, பெட்டியில் உள்ள \"Mark Paid\" ஐப் பயன்படுத்தவும் — அது தொகை, தேதி, வசூலித்தவரை சரியாக பதிவு செய்யும். இங்கு \"Paid\" ஐ புதிய வசூல் பதிவு இல்லாமல் நிலை/தேதிகளை கைமுறையாக சரிசெய்ய மட்டும் பயன்படுத்தவும்.",
+      lblReportMode:"முறை", lblReportCollector:"வசூலித்தவர்",
       modeCash:"பணமாக", modeUpi:"UPI", modeMonthsTotalLabel:"மொத்தம் வசூலிக்க வேண்டியது:",
       removeBtn:"🗑 நீக்கு", billBtn:"🧾 பில் உருவாக்கு", saveCustomerBtn:"வாடிக்கையாளரை சேமி",
       receiptTitle:"பில் ரசீது", receiptSub:"அச்சிடும் முன் அல்லது அனுப்பும் முன் பார்வையிடவும்",
@@ -1031,6 +1049,10 @@
       activityBtnLabel:"செயல்பாடு", activityTitle:"செயல்பாட்டு பதிவு", activitySub:"இந்த பயன்பாட்டில் சமீபத்திய மாற்றங்கள்",
       manualBtnLabel:"கையேடு", manualTitle:"பயனர் கையேடு", manualSub:"இந்த ஆப்பை எப்படி பயன்படுத்துவது",
       actionAdded:"வாடிக்கையாளர் சேர்க்கப்பட்டார்", actionUpdated:"வாடிக்கையாளர் புதுப்பிக்கப்பட்டார்", actionRemoved:"வாடிக்கையாளர் நீக்கப்பட்டார்", actionPaid:"செலுத்தியதாக குறிக்கப்பட்டது", actionAutoUnpaid:"தானாக செலுத்தாதது எனக் குறிக்கப்பட்டது",
+      actionPaymentCancelled:"பணம் செலுத்தியது ரத்து செய்யப்பட்டது",
+      quickCancelPay:"↩ பணம் ரத்து",
+      confirmCancelPayMsg:"{name} க்கான கடைசி பணம் செலுத்துதலை ({amount}) ரத்து செய்யவா? இது நிலை, அடுத்த தேதி மற்றும் தொகையை முந்தைய நிலைக்கு மாற்றும்.",
+      cancelPayLogMsg:"தவறாக செலுத்தப்பட்ட {amount} ரத்து செய்யப்பட்டது",
       noActivity:"இன்னும் செயல்பாடுகள் பதிவு செய்யப்படவில்லை.",
       lblActivityFrom:"தொடக்கம்", lblActivityTo:"முடிவு", activityClearBtn:"அனைத்தும் காட்டு", activityDownloadBtn:"⬇ பதிவிறக்கு",
       activityTodayBtn:"இன்று", activityLast7Btn:"கடந்த 7 நாட்கள்", activityLast15Btn:"கடந்த 15 நாட்கள்", activityThisMonthBtn:"இந்த மாதம்",
@@ -1156,7 +1178,10 @@
     session: null,
     activityLog: []
   };
-  var fbApp = null, fbDb = null, syncRef = null, syncEnabled = false, isApplyingRemote = false;
+  var fbApp = null, fbDb = null, syncRefs = {}, syncEnabled = false, isApplyingRemote = false;
+  var applyingRemoteCount = 0;
+  function beginApplyingRemote(){ applyingRemoteCount++; isApplyingRemote = true; }
+  function endApplyingRemote(){ applyingRemoteCount = Math.max(0, applyingRemoteCount - 1); isApplyingRemote = applyingRemoteCount > 0; }
 
   function t(key){ return (I18N[state.lang] && I18N[state.lang][key] !== undefined) ? I18N[state.lang][key] : I18N.en[key]; }
 
@@ -1204,19 +1229,36 @@
     if(state.session) localStorage.setItem(SESSION_KEY, JSON.stringify(state.session));
     else localStorage.removeItem(SESSION_KEY);
   }
-  function saveData(){ localStorage.setItem(DATA_KEY, JSON.stringify(state.data)); pushToCloud(); }
-  function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); pushToCloud(); }
-  function saveCategories(){ localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories)); pushToCloud(); }
-  function saveStaff(){ localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff)); pushToCloud(); }
-  function saveActivity(){ localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog)); pushToCloud(); }
+  // Each save*() pushes only the piece that changed — never the whole
+  // dataset — so one device's save can't silently overwrite another
+  // device's more recent, not-yet-synced changes (like a cancelled payment).
+  function saveData(ids){
+    localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
+    if(!ids) return;
+    (Array.isArray(ids) ? ids : [ids]).forEach(function(id){ pushCustomerToCloud(id); });
+  }
+  function saveSettings(){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); pushSettingsToCloud(); }
+  function saveCategories(){ localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories)); pushCategoriesToCloud(); }
+  function saveStaff(){ localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff)); pushStaffToCloud(); }
+  function saveActivity(entry){
+    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
+    if(entry) pushActivityEntryToCloud(entry);
+  }
+  // Used when an existing activity entry is edited in place (e.g. tagging a
+  // payment as cancelled) rather than a new entry being appended.
+  function pushActivityEntryById(id){
+    var entry = state.activityLog.filter(function(e){ return e.id === id; })[0];
+    if(entry) pushActivityEntryToCloud(entry);
+  }
   function logActivity(action, boxId, customerName, extra, meta){
     var actor = "Unknown";
     if(state.session){ actor = state.session.role === "office" ? "Office" : state.session.staffName; }
-    var entry = { time: Date.now(), actor: actor, action: action, box: boxId, name: customerName || "", extra: extra || "" };
+    var entry = { id: Date.now() + "_" + Math.random().toString(36).slice(2,8), time: Date.now(), actor: actor, action: action, box: boxId, name: customerName || "", extra: extra || "" };
     if(meta) entry.meta = meta;
     state.activityLog.unshift(entry);
     if(state.activityLog.length > 300){ state.activityLog = state.activityLog.slice(0, 300); }
-    saveActivity();
+    saveActivity(entry);
+    return entry;
   }
   function saveLang(){ localStorage.setItem(LANG_KEY, state.lang); }
   function nextInvoiceNumber(){
@@ -1324,8 +1366,10 @@
     document.getElementById("trialLockedTitle").textContent = t("trialLockedTitle");
     document.getElementById("trialLockedMsg").textContent = t("trialLockedMsg");
     document.getElementById("trialLockedRecheckLabel").textContent = t("trialLockedRecheckLabel");
+    document.getElementById("optPaidPicker").textContent = t("optPaid");
     document.getElementById("optUnpaid").textContent = t("optUnpaid");
     document.getElementById("optSuspended").textContent = t("optSuspended");
+    document.getElementById("statusPickerHint").textContent = t("statusPickerHint");
     document.getElementById("modeCashOpt").textContent = t("modeCash");
     document.getElementById("modeUpiOpt").textContent = t("modeUpi");
     document.getElementById("deleteCustBtn").textContent = t("removeBtn");
@@ -1358,6 +1402,8 @@
     document.getElementById("reportSub").textContent = t("reportSub");
     document.getElementById("lblReportFrom").textContent = t("lblReportFrom");
     document.getElementById("lblReportTo").textContent = t("lblReportTo");
+    document.getElementById("lblReportMode").textContent = t("lblReportMode");
+    document.getElementById("lblReportCollector").textContent = t("lblReportCollector");
     document.getElementById("reportClearBtn").textContent = t("reportClearBtn");
     document.getElementById("reportTodayBtn").textContent = t("reportTodayBtn");
     document.getElementById("reportLast7Btn").textContent = t("reportLast7Btn");
@@ -1730,16 +1776,22 @@
     }
     box.className = "box status-" + c.status;
     var amt = fmtMoney(c.amount);
+    var cancelBtnHtml = (isOffice() && c.lastPaymentSnapshot)
+      ? "<button data-act='cancelpay' style='color:#B23A2E;'>"+t("quickCancelPay")+"</button>"
+      : "";
     box.innerHTML =
       "<div><div class='boxno'>"+id+"</div><div class='cname'>"+escapeHtml(c.name||"(no name)")+"</div><div class='cmobile'>"+escapeHtml(c.mobile||"—")+"</div></div>" +
       "<div><div class='camount'>"+amt+" /mo</div><div class='cquick'>" +
         "<button data-act='bill' style='font-weight:900;text-decoration:underline;'>"+t("quickBill")+"</button>" +
         "<button data-act='paid'>"+t("quickMarkPaid")+"</button>" +
         "<button data-act='edit'>"+t("quickEdit")+"</button>" +
+        cancelBtnHtml +
       "</div></div>";
     box.querySelector("[data-act='edit']").addEventListener("click", function(ev){ ev.stopPropagation(); openCustomerModal(id, c); });
     box.querySelector("[data-act='bill']").addEventListener("click", function(ev){ ev.stopPropagation(); openReceipt(id, c); });
     box.querySelector("[data-act='paid']").addEventListener("click", function(ev){ ev.stopPropagation(); openModePopup(id); });
+    var cancelBtn = box.querySelector("[data-act='cancelpay']");
+    if(cancelBtn) cancelBtn.addEventListener("click", function(ev){ ev.stopPropagation(); cancelLastPayment(id); });
     box.addEventListener("click", function(){ openCustomerModal(id, c); });
     return box;
   }
@@ -1825,9 +1877,28 @@
       var collector = (state.session && state.session.role === "staff") ? state.session.staffName : document.getElementById("modeCollectorSelect").value;
       var months = Number(document.getElementById("modeMonthsSelect").value) || 1;
       var collectedAmt = Number(document.getElementById("modeAmountReceived").value) || 0;
+      // Next Due Date = the customer's billing due date + the number of
+      // months paid — full stop. This is deliberately NOT clamped to
+      // "at least today": if someone is 2 months overdue and only pays for
+      // 1, the resulting due date is correctly still in the past, and they
+      // correctly stay Unpaid (they genuinely still owe for the remaining
+      // gap). "Date Paid" below is separate — it's just today's date,
+      // recording when this transaction happened; it plays no part in the
+      // due-date math itself.
       var periodFrom = document.getElementById("modePeriodFrom").value || c.dueDate || c.lastPaid || todayStr();
       var periodTo = document.getElementById("modePeriodTo").value || addMonthsToDate(periodFrom, months);
       var datePaid = document.getElementById("modeDatePaid").value || todayStr();
+
+      // Snapshot exactly what this customer looked like right before this
+      // payment, so Office can undo it with "Cancel Payment" if it was
+      // made by mistake (wrong amount, wrong customer, wrong mode, etc).
+      var snapshot = {
+        status: c.status, lastPaid: c.lastPaid, dueDate: c.dueDate, mode: c.mode,
+        collector: c.collector, lastPaidAmount: c.lastPaidAmount, monthsPaid: c.monthsPaid,
+        periodFrom: c.periodFrom, periodTo: c.periodTo, lastBillingNote: c.lastBillingNote,
+        paidRecordedOn: c.paidRecordedOn
+      };
+
       c.status = "paid";
       c.lastPaid = periodTo;
       c.dueDate = periodTo;
@@ -1839,11 +1910,46 @@
       c.periodTo = periodTo;
       c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
-      logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
+      c.lastPaymentSnapshot = snapshot;
+      var logEntry = logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
         { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount });
-      saveData(); hideOverlay("modeOverlay"); renderAll();
+      c.lastPaymentLogId = logEntry.id;
+      saveData(id); hideOverlay("modeOverlay"); renderAll();
     });
   });
+
+  // ---------- Cancel a wrongly-made payment (Office only) ----------
+  function cancelLastPayment(id){
+    var c = state.data[id];
+    if(!c || !c.lastPaymentSnapshot) return;
+    var amt = fmtMoney(c.lastPaidAmount);
+    if(!window.confirm(t("confirmCancelPayMsg").replace("{name}", c.name || id).replace("{amount}", amt))) return;
+    var snap = c.lastPaymentSnapshot;
+    c.status = snap.status; c.lastPaid = snap.lastPaid; c.dueDate = snap.dueDate;
+    c.mode = snap.mode; c.collector = snap.collector; c.lastPaidAmount = snap.lastPaidAmount;
+    c.monthsPaid = snap.monthsPaid; c.periodFrom = snap.periodFrom; c.periodTo = snap.periodTo;
+    c.lastBillingNote = snap.lastBillingNote; c.paidRecordedOn = snap.paidRecordedOn;
+    // Tag the ORIGINAL "paid" log entry as cancelled (rather than deleting
+    // it) so it stops counting toward collection totals, but still shows up
+    // in Payment History and the Report detail table — struck through and
+    // clearly labelled — as a permanent record that a payment was made and
+    // then reversed, not as if it never happened.
+    var actor = state.session ? (state.session.role === "office" ? "Office" : state.session.staffName) : "Unknown";
+    if(c.lastPaymentLogId){
+      var origEntry = state.activityLog.filter(function(e){ return e.id === c.lastPaymentLogId; })[0];
+      if(origEntry){
+        origEntry.cancelled = true;
+        origEntry.cancelledAt = Date.now();
+        origEntry.cancelledBy = actor;
+      }
+    }
+    delete c.lastPaymentSnapshot;
+    delete c.lastPaymentLogId;
+    saveActivity();
+    if(origEntry) pushActivityEntryById(origEntry.id);
+    logActivity("payment-cancelled", id, c.name, t("cancelPayLogMsg").replace("{amount}", amt));
+    saveData(id); renderAll();
+  }
 
   // ---------- Customer Modal ----------
   var pendingStatus = "unpaid";
@@ -1868,8 +1974,12 @@
       var subParts = [dateStr + monthsTxt];
       if(mode) subParts.push(mode);
       if(collector) subParts.push(escapeHtml(collector));
-      return "<div style='display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eef1f4;font-size:12.5px;'>"+
-        "<span>"+subParts.join(" · ")+"</span>"+
+      var rowStyle = e.cancelled
+        ? "display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eef1f4;font-size:12.5px;opacity:0.6;text-decoration:line-through;"
+        : "display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #eef1f4;font-size:12.5px;";
+      var cancelTag = e.cancelled ? " <span style='text-decoration:none;display:inline-block;color:#B23A2E;font-weight:700;font-size:10px;border:1px solid #B23A2E;border-radius:4px;padding:1px 4px;margin-left:4px;'>CANCELLED</span>" : "";
+      return "<div style='"+rowStyle+"'>"+
+        "<span>"+subParts.join(" · ")+cancelTag+"</span>"+
         "<span style='font-weight:700;color:var(--paid-dark);'>"+fmtMoney(amount)+"</span>"+
         "</div>";
     }).join("");
@@ -1917,6 +2027,10 @@
     document.getElementById("fNotes").value = c ? c.notes || "" : "";
     renderCustHistory(id, !!c);
     pendingStatus = c ? c.status || "unpaid" : "unpaid";
+    // Manually setting status to Paid (bypassing Mark Paid's amount/date
+    // logging) is an Office-only correction tool — Staff can still see and
+    // use Mark Paid on the box as normal, just not this direct shortcut.
+    document.getElementById("optPaidPicker").style.display = isOffice() ? "" : "none";
     var badge = document.getElementById("currentStatusBadge");
     if(pendingStatus === "paid"){
       badge.style.display = "";
@@ -1938,7 +2052,9 @@
   document.getElementById("statusPicker").addEventListener("click", function(e){
     var opt = e.target.closest(".status-opt");
     if(!opt) return;
-    pendingStatus = opt.getAttribute("data-status");
+    var newStatus = opt.getAttribute("data-status");
+    if(newStatus === "paid" && !isOffice()) return; // Office-only manual correction
+    pendingStatus = newStatus;
     updateStatusPicker();
   });
   document.getElementById("saveCustBtn").addEventListener("click", function(){
@@ -1962,10 +2078,20 @@
     if(pendingStatus === "paid" && !lastPaidVal){
       lastPaidVal = wasAlreadyPaid ? (prev.lastPaid || prev.paidRecordedOn || todayStr()) : todayStr();
     }
+    // Note: no auto-flip guard here on purpose — Office sometimes needs to
+    // manually correct a customer's dates/balance directly (backdating,
+    // fixing a data-entry mistake, etc.), and a past due date is a valid
+    // thing to save in that case. If someone is saved as Paid with a due
+    // date already passed, the normal daily due-date check will flip them
+    // to Unpaid the next time the app refreshes — same as any other
+    // customer whose subscription has lapsed. Mark Paid (the box button)
+    // still calculates a correct future due date on its own for normal
+    // day-to-day payments.
+    var dueDateVal = document.getElementById("fDueDate").value;
     state.data[id] = Object.assign({}, prev, {
       name:name, mobile:mobile, amount:amount, status:pendingStatus,
       lastPaid: lastPaidVal,
-      dueDate: document.getElementById("fDueDate").value,
+      dueDate: dueDateVal,
       stb: document.getElementById("fStb").value.trim(),
       mode: document.getElementById("fMode").value,
       collector: collectorVal,
@@ -1980,7 +2106,7 @@
     }
     var statusLabelKeys = { paid:"optPaid", unpaid:"optUnpaid", suspended:"optSuspended" };
     logActivity(isNew ? "added" : "updated", id, name, fmtMoney(amount) + " · " + t(statusLabelKeys[pendingStatus] || "optUnpaid"));
-    saveData(); hideOverlay("customerOverlay"); renderAll();
+    saveData(id); hideOverlay("customerOverlay"); renderAll();
   });
   document.getElementById("deleteCustBtn").addEventListener("click", function(){
     var id = state.activeBox;
@@ -1988,7 +2114,7 @@
     var oldName = state.data[id] ? state.data[id].name : "";
     delete state.data[id];
     logActivity("removed", id, oldName, "");
-    saveData(); hideOverlay("customerOverlay"); renderAll();
+    saveData(id); hideOverlay("customerOverlay"); renderAll();
   });
   document.getElementById("billFromModalBtn").addEventListener("click", function(){
     var id = state.activeBox; var c = state.data[id];
@@ -2276,7 +2402,12 @@
         if(payload.categories && payload.categories.length){ state.categories = payload.categories; }
         if(payload.staff && payload.staff.length){ state.staff = payload.staff; }
         if(payload.activityLog && payload.activityLog.length){ state.activityLog = payload.activityLog; }
-        saveData(); saveSettings(); saveCategories(); saveStaff(); saveActivity();
+        localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+        localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories));
+        localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff));
+        localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
+        pushFullSnapshotToCloud();
         document.getElementById("shopNameInput").value = state.settings.shopName;
         state.activeCat = state.categories[0].code;
         renderAll();
@@ -2665,38 +2796,120 @@
   }
 
   function attachSyncListener(roomId){
-    if(syncRef){ try{ syncRef.off(); }catch(e){} }
-    syncRef = fbDb.ref("cabletv_shops/" + roomId);
-    syncRef.on("value", function(snapshot){
-      var val = snapshot.val();
+    detachSyncListeners();
+    var base = "cabletv_shops/" + roomId;
+
+    syncRefs.data = fbDb.ref(base + "/data");
+    syncRefs.data.on("value", function(snapshot){
       updateSyncStatus("connected");
-      if(!val) return;
-      isApplyingRemote = true;
-      if(val.data) state.data = val.data;
-      if(val.settings) state.settings = Object.assign(state.settings, val.settings);
-      if(val.categories && val.categories.length) state.categories = val.categories;
-      if(val.staff && val.staff.length) state.staff = val.staff;
-      if(val.activityLog && val.activityLog.length) state.activityLog = val.activityLog;
+      beginApplyingRemote();
+      state.data = snapshot.val() || {};
       localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
+      renderAll();
+      endApplyingRemote();
+    }, function(){ updateSyncStatus("error"); });
+
+    syncRefs.settings = fbDb.ref(base + "/settings");
+    syncRefs.settings.on("value", function(snapshot){
+      var val = snapshot.val();
+      if(!val) return;
+      beginApplyingRemote();
+      state.settings = Object.assign(state.settings, val);
       localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings));
+      document.getElementById("shopNameInput").value = state.settings.shopName || "";
+      renderAll();
+      endApplyingRemote();
+    });
+
+    syncRefs.categories = fbDb.ref(base + "/categories");
+    syncRefs.categories.on("value", function(snapshot){
+      var val = snapshot.val();
+      if(!val || !val.length) return;
+      beginApplyingRemote();
+      state.categories = val;
       localStorage.setItem(CATEGORIES_KEY, JSON.stringify(state.categories));
-      localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff));
-      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
-      document.getElementById("shopNameInput").value = state.settings.shopName;
       if(!state.categories.some(function(c){ return c.code === state.activeCat; })){
         state.activeCat = state.categories[0].code;
       }
-      populateStaffDropdowns();
       renderAll();
-      isApplyingRemote = false;
-    }, function(){ updateSyncStatus("error"); });
+      endApplyingRemote();
+    });
+
+    syncRefs.staff = fbDb.ref(base + "/staff");
+    syncRefs.staff.on("value", function(snapshot){
+      var val = snapshot.val();
+      if(!val || !val.length) return;
+      beginApplyingRemote();
+      state.staff = val;
+      localStorage.setItem(STAFF_KEY, JSON.stringify(state.staff));
+      populateStaffDropdowns();
+      endApplyingRemote();
+    });
+
+    syncRefs.activityLog = fbDb.ref(base + "/activityLog");
+    syncRefs.activityLog.on("value", function(snapshot){
+      var val = snapshot.val();
+      if(!val) return;
+      beginApplyingRemote();
+      // Stored as an object keyed by each entry's own id, so edits to an
+      // existing entry (like tagging a payment cancelled) and brand-new
+      // entries from either device both merge correctly instead of one
+      // device's copy overwriting the other's.
+      var list = Object.keys(val).map(function(k){ return val[k]; });
+      list.sort(function(a,b){ return (b.time || 0) - (a.time || 0); });
+      state.activityLog = list.slice(0, 300);
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
+      endApplyingRemote();
+    });
   }
 
-  function pushToCloud(){
+  function detachSyncListeners(){
+    Object.keys(syncRefs).forEach(function(k){
+      try{ syncRefs[k].off(); }catch(e){}
+    });
+    syncRefs = {};
+  }
+
+  function pushCustomerToCloud(id){
     if(!syncEnabled || !fbDb || isApplyingRemote) return;
     var conf = loadSyncConfig();
     if(!conf) return;
-    var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: state.activityLog, updatedAt: Date.now() };
+    var val = state.data[id];
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/data/" + id).set(val === undefined ? null : val);
+  }
+  function pushSettingsToCloud(){
+    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    var conf = loadSyncConfig();
+    if(!conf) return;
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/settings").set(state.settings);
+  }
+  function pushCategoriesToCloud(){
+    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    var conf = loadSyncConfig();
+    if(!conf) return;
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/categories").set(state.categories);
+  }
+  function pushStaffToCloud(){
+    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    var conf = loadSyncConfig();
+    if(!conf) return;
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/staff").set(state.staff);
+  }
+  function pushActivityEntryToCloud(entry){
+    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    var conf = loadSyncConfig();
+    if(!conf) return;
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/activityLog/" + entry.id).set(entry);
+  }
+  // Full-room overwrite — used ONLY to seed a brand-new empty sync room with
+  // this device's existing local data. Never called from a normal save.
+  function pushFullSnapshotToCloud(){
+    if(!syncEnabled || !fbDb) return;
+    var conf = loadSyncConfig();
+    if(!conf) return;
+    var activityById = {};
+    state.activityLog.forEach(function(e){ activityById[e.id] = e; });
+    var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: activityById, updatedAt: Date.now() };
     fbDb.ref("cabletv_shops/" + conf.roomId).set(payload);
   }
 
@@ -2709,8 +2922,16 @@
         fbDb = firebase.database();
         syncEnabled = true;
         saveSyncConfig({ config:configObj, roomId:roomId, enabled:true });
-        attachSyncListener(roomId);
-        if(!silent){ pushToCloud(); }
+        var baseRef = fbDb.ref("cabletv_shops/" + roomId);
+        baseRef.once("value").then(function(snap){
+          attachSyncListener(roomId);
+          if(!snap.exists()){
+            // Brand-new sync room — seed it with whatever this device already has.
+            pushFullSnapshotToCloud();
+          }
+        }).catch(function(){
+          attachSyncListener(roomId);
+        });
       }catch(err){
         updateSyncStatus("error");
         if(!silent) alert(t("syncErrorMsg"));
@@ -2751,7 +2972,7 @@
     connectSync(configObj, roomId, false);
   });
   document.getElementById("syncDisconnectBtn").addEventListener("click", function(){
-    if(syncRef){ try{ syncRef.off(); }catch(e){} syncRef = null; }
+    detachSyncListeners();
     syncEnabled = false;
     clearSyncConfig();
     updateSyncStatus("off");
@@ -2765,7 +2986,7 @@
   // total can never disagree with what's listed underneath it. Paid/unpaid/
   // suspended status counts always reflect current live status (status
   // itself has no date range).
-  function computeStatusCounts(fromDate, toDate){
+  function computeStatusCounts(fromDate, toDate, modeFilter, collectorFilter){
     var paid=0, unpaid=0, suspended=0;
     var cash=0, upi=0, office=0;
     var byStaff = {};
@@ -2779,14 +3000,17 @@
     });
     state.activityLog.forEach(function(e){
       if(e.action !== "paid") return;
+      if(e.cancelled) return;
       if(!isBoxVisible(e.box)) return;
       if(staffOnly && e.actor === "Office") return; // office's own collections stay out of a staff member's report
       var day = reportDayStr(e.time);
       if(fromDate && day < fromDate) return;
       if(toDate && day > toDate) return;
-      var amt = e.meta && e.meta.amount != null ? e.meta.amount : (parseFloat((e.extra||"").replace(/[^\d.]/g,"")) || 0);
       var mode = e.meta && e.meta.mode ? e.meta.mode : "cash";
+      if(modeFilter && modeFilter !== "all" && mode !== modeFilter) return;
       var who = (e.meta && e.meta.collector) ? e.meta.collector : e.actor;
+      if(collectorFilter && collectorFilter.length && collectorFilter.indexOf(who) === -1) return;
+      var amt = e.meta && e.meta.amount != null ? e.meta.amount : (parseFloat((e.extra||"").replace(/[^\d.]/g,"")) || 0);
       if(mode === "upi") upi += amt;
       else cash += amt;
       if(who){ byStaff[who] = (byStaff[who]||0) + amt; }
@@ -2795,10 +3019,48 @@
     return { paid:paid, unpaid:unpaid, suspended:suspended, cash:cash, upi:upi, office:office, byStaff:byStaff, total: paid+unpaid+suspended };
   }
 
+  var reportModeFilter = "all";
+  var reportCollectorFilter = []; // empty = no filter = everyone
+
+  function renderReportFilters(){
+    var modeRow = document.getElementById("reportModeFilterRow");
+    var modes = [["all","optAll"],["cash","reportCash"],["upi","reportUpi"]];
+    modeRow.innerHTML = modes.map(function(m){
+      var active = reportModeFilter === m[0];
+      return "<button type='button' class='btn btn-sm "+(active?"btn-outline active":"btn-outline")+"' data-mode-filter='"+m[0]+"' style='"+(active?"background:var(--accent);color:#fff;border-color:var(--accent);":"")+"'>"+t(m[1])+"</button>";
+    }).join("");
+    modeRow.querySelectorAll("[data-mode-filter]").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        reportModeFilter = btn.getAttribute("data-mode-filter");
+        renderReport();
+      });
+    });
+
+    var collectorRow = document.getElementById("reportCollectorFilterRow");
+    var collectors = [{ name:"Office", label:t("collectorOffice") }];
+    state.staff.forEach(function(s){ collectors.push({ name:s.name, label:s.name }); });
+    collectorRow.innerHTML = collectors.map(function(c){
+      var checked = reportCollectorFilter.indexOf(c.name) !== -1;
+      return "<label style='display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;'>" +
+        "<input type='checkbox' data-collector-filter='"+escapeHtml(c.name)+"' "+(checked?"checked":"")+" />" +
+        escapeHtml(c.label) + "</label>";
+    }).join("");
+    collectorRow.querySelectorAll("[data-collector-filter]").forEach(function(cb){
+      cb.addEventListener("change", function(){
+        var name = cb.getAttribute("data-collector-filter");
+        var idx = reportCollectorFilter.indexOf(name);
+        if(cb.checked){ if(idx === -1) reportCollectorFilter.push(name); }
+        else{ if(idx !== -1) reportCollectorFilter.splice(idx, 1); }
+        renderReport();
+      });
+    });
+  }
+
   function renderReport(){
     var fromDate = document.getElementById("reportDateFrom").value;
     var toDate = document.getElementById("reportDateTo").value;
-    var counts = computeStatusCounts(fromDate || null, toDate || null);
+    renderReportFilters();
+    var counts = computeStatusCounts(fromDate || null, toDate || null, reportModeFilter, reportCollectorFilter);
     var totalCollection = counts.cash + counts.upi;
     var reportGrid = document.getElementById("reportGrid");
     var html =
@@ -2822,7 +3084,7 @@
       subEl.textContent = t("reportSub");
     }
     drawPie(counts);
-    renderReportDetail(fromDate, toDate);
+    renderReportDetail(fromDate, toDate, reportModeFilter, reportCollectorFilter);
   }
   function reportDayStr(ts){
     var d = new Date(ts);
@@ -2830,7 +3092,7 @@
     return y + "-" + m + "-" + day;
   }
   var lastReportDetailRows = [];
-  function renderReportDetail(fromDate, toDate){
+  function renderReportDetail(fromDate, toDate, modeFilter, collectorFilter){
     var staffOnly = state.session && state.session.role === "staff";
     var rows = state.activityLog.filter(function(e){
       if(e.action !== "paid") return false;
@@ -2839,6 +3101,10 @@
       var day = reportDayStr(e.time);
       if(fromDate && day < fromDate) return false;
       if(toDate && day > toDate) return false;
+      var mode = e.meta && e.meta.mode ? e.meta.mode : "cash";
+      if(modeFilter && modeFilter !== "all" && mode !== modeFilter) return false;
+      var who = (e.meta && e.meta.collector) ? e.meta.collector : e.actor;
+      if(collectorFilter && collectorFilter.length && collectorFilter.indexOf(who) === -1) return false;
       return true;
     });
     lastReportDetailRows = rows;
@@ -2860,8 +3126,10 @@
       if(months && months > 1 && planAmount){
         amountCell += " <span style='color:#888;font-size:11px;'>("+fmtMoney(planAmount)+"×"+months+")</span>";
       }
-      return "<tr style='border-top:1px solid #eee;'>" +
-        "<td style='padding:6px 8px;'>"+escapeHtml(e.name||"")+"</td>" +
+      var rowStyle = e.cancelled ? "border-top:1px solid #eee;opacity:0.6;text-decoration:line-through;" : "border-top:1px solid #eee;";
+      var cancelTag = e.cancelled ? " <span style='text-decoration:none;display:inline-block;color:#B23A2E;font-weight:700;font-size:10px;border:1px solid #B23A2E;border-radius:4px;padding:1px 4px;margin-left:4px;'>CANCELLED</span>" : "";
+      return "<tr style='"+rowStyle+"'>" +
+        "<td style='padding:6px 8px;'>"+escapeHtml(e.name||"")+cancelTag+"</td>" +
         "<td style='padding:6px 8px;'>"+escapeHtml(e.box||"")+"</td>" +
         "<td style='padding:6px 8px;'>"+dateStr+"</td>" +
         "<td style='padding:6px 8px;'>"+timeStr+"</td>" +
@@ -2873,7 +3141,7 @@
   }
   document.getElementById("reportDownloadBtn").addEventListener("click", function(){
     if(!lastReportDetailRows.length){ alert("No payments in this range to download."); return; }
-    var header = ["Name","Box","Date","Time","Mode","Collected By","Months","Plan Amount","Amount"];
+    var header = ["Name","Box","Date","Time","Mode","Collected By","Months","Plan Amount","Amount","Status"];
     var lines = [header.join(",")];
     lastReportDetailRows.forEach(function(e){
       var d = new Date(e.time);
@@ -2884,7 +3152,8 @@
       var collector = e.meta && e.meta.collector ? e.meta.collector : "";
       var months = (e.meta && e.meta.months) || 1;
       var planAmount = (e.meta && e.meta.planAmount != null) ? e.meta.planAmount : "";
-      var row = [e.name||"", e.box||"", dateStr, timeStr, mode, collector, months, planAmount, amount];
+      var status = e.cancelled ? "Cancelled" : "Completed";
+      var row = [e.name||"", e.box||"", dateStr, timeStr, mode, collector, months, planAmount, amount, status];
       lines.push(row.map(function(v){
         var s = String(v).replace(/"/g,'""');
         return /[",\n]/.test(s) ? '"'+s+'"' : s;
@@ -3010,7 +3279,7 @@
     var y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
     return y + "-" + m + "-" + day;
   }
-  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid" };
+  var ACTION_LABEL_KEYS = { added:"actionAdded", updated:"actionUpdated", removed:"actionRemoved", paid:"actionPaid", "auto-unpaid":"actionAutoUnpaid", "payment-cancelled":"actionPaymentCancelled" };
 
   function getFilteredActivity(){
     var fromDate = document.getElementById("activityDateFrom").value;
@@ -3210,16 +3479,16 @@
   // flipped to "unpaid" (green -> red). Suspended customers are untouched.
   function applyDueDateFlips(){
     var today = todayStr();
-    var changed = false;
+    var changedIds = [];
     Object.keys(state.data).forEach(function(id){
       var c = state.data[id];
       if(c.status === "paid" && c.dueDate && c.dueDate < today){
         c.status = "unpaid";
-        changed = true;
+        changedIds.push(id);
         logActivity("auto-unpaid", id, c.name, "Due date " + c.dueDate + " passed");
       }
     });
-    if(changed) saveData();
+    if(changedIds.length) saveData(changedIds);
   }
 
   // ---------- Init ----------
