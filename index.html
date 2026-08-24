@@ -736,6 +736,7 @@
             <th style="padding:6px 8px;">Mode</th>
             <th style="padding:6px 8px;">Collected By</th>
             <th style="padding:6px 8px;text-align:right;">Amount</th>
+            <th style="padding:6px 8px;" id="reportActionCol"></th>
           </tr>
         </thead>
         <tbody id="reportDetailBody"></tbody>
@@ -845,6 +846,11 @@
   var STORAGE_SUFFIX = LICENSE_KEY ? ("_" + LICENSE_KEY.replace(/[^a-zA-Z0-9\-_]/g, "")) : "";
 
   var DATA_KEY = "cabletv_billing_data_v1" + STORAGE_SUFFIX;
+  // Bumped whenever the Cloud Sync data shape changes in a way that's
+  // incompatible with older app versions (see the schemaVersion tripwire
+  // in attachSyncListener) — lets an up-to-date device detect the moment
+  // an outdated device on the same sync room overwrites shared data.
+  var SCHEMA_VERSION = 2;
   var SETTINGS_KEY = "cabletv_billing_settings_v1" + STORAGE_SUFFIX;
   var INVOICE_KEY = "cabletv_billing_invoice_seq_v1" + STORAGE_SUFFIX;
   var CATEGORIES_KEY = "cabletv_billing_categories_v1" + STORAGE_SUFFIX;
@@ -906,6 +912,7 @@
       addTitle:"Add Customer", editTitle:"Edit Customer", boxLabel:"Box",
       lblName:"Customer Name", lblMobile:"Mobile Number (optional)", lblAmount:"Plan Amount (₹)",
       lblLastPaid:"Last Paid Date", lblDueDate:"Next Due Date", lblStatus:"Payment Status",
+      lblSuspendedOn:"Suspended on", suspendedOnHint:"Mark Paid will calculate the new due date from this date, not from today",
       lblMode:"Collection Mode", lblNotes:"Notes (optional)", lblCollector:"Collected By", lblModeCollector:"Collected By", lblModeMonths:"Paid For",
       lblStb:"STB / Box No (optional)",
       lblModeName:"Name", lblModeMobile:"Mobile", lblModePlanAmount:"Plan Amount (₹)", lblModeAmountReceived:"Amount Received (₹)",
@@ -990,6 +997,7 @@
       addTitle:"வாடிக்கையாளரைச் சேர்", editTitle:"வாடிக்கையாளரைத் திருத்து", boxLabel:"பாக்ஸ்",
       lblName:"வாடிக்கையாளர் பெயர்", lblMobile:"மொபைல் எண் (விருப்பம்)", lblAmount:"திட்ட தொகை (₹)",
       lblLastPaid:"கடைசியாக செலுத்திய தேதி", lblDueDate:"அடுத்த செலுத்த வேண்டிய தேதி", lblStatus:"கட்டண நிலை",
+      lblSuspendedOn:"இடைநிறுத்தப்பட்ட தேதி", suspendedOnHint:"Mark Paid இந்த தேதியிலிருந்து புதிய தேதியை கணக்கிடும், இன்றைய தேதியிலிருந்து அல்ல",
       lblMode:"வசூல் முறை", lblNotes:"குறிப்புகள் (விருப்பம்)", lblCollector:"யார் வசூலித்தார்", lblModeCollector:"யார் வசூலித்தார்", lblModeMonths:"எத்தனை மாதங்களுக்கு செலுத்துகிறார்",
       lblStb:"STB / பாக்ஸ் எண் (விருப்பம்)",
       lblModeName:"பெயர்", lblModeMobile:"மொபைல்", lblModePlanAmount:"திட்ட தொகை (₹)", lblModeAmountReceived:"பெறப்பட்ட தொகை (₹)",
@@ -1180,8 +1188,24 @@
   };
   var fbApp = null, fbDb = null, syncRefs = {}, syncEnabled = false, isApplyingRemote = false;
   var applyingRemoteCount = 0;
+  var pendingCustomerPushes = {};
+  var pendingOtherPushes = {}; // settings/categories/staff — flags, not ids
   function beginApplyingRemote(){ applyingRemoteCount++; isApplyingRemote = true; }
-  function endApplyingRemote(){ applyingRemoteCount = Math.max(0, applyingRemoteCount - 1); isApplyingRemote = applyingRemoteCount > 0; }
+  function endApplyingRemote(){
+    applyingRemoteCount = Math.max(0, applyingRemoteCount - 1);
+    isApplyingRemote = applyingRemoteCount > 0;
+    if(!isApplyingRemote){
+      // Anything that tried to push WHILE a remote update was being applied
+      // got silently skipped at the time (to avoid re-echoing what we just
+      // received) — flush those now so nothing is ever lost, only delayed.
+      Object.keys(pendingCustomerPushes).forEach(function(id){ pushCustomerToCloud(id); });
+      pendingCustomerPushes = {};
+      if(pendingOtherPushes.settings){ pushSettingsToCloud(); }
+      if(pendingOtherPushes.categories){ pushCategoriesToCloud(); }
+      if(pendingOtherPushes.staff){ pushStaffToCloud(); }
+      pendingOtherPushes = {};
+    }
+  }
 
   function t(key){ return (I18N[state.lang] && I18N[state.lang][key] !== undefined) ? I18N[state.lang][key] : I18N.en[key]; }
 
@@ -1858,7 +1882,11 @@
     var today = todayStr();
     document.getElementById("modeDatePaid").value = today;
     document.getElementById("modeCurrentDateDisplay").value = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
-    var periodStart = c.dueDate || c.lastPaid || today;
+    // If this box is currently Suspended, the customer wasn't accruing
+    // service (or debt) while suspended — so the new billing period should
+    // count from the date the box was suspended, not from the original
+    // overdue due date and not from today's payment date.
+    var periodStart = (c.status === "suspended" && c.suspendedOn) ? c.suspendedOn : (c.dueDate || c.lastPaid || today);
     document.getElementById("modePeriodFrom").value = periodStart;
     document.getElementById("modeNotes").value = "";
     modeAmountTouched = false; modeToTouched = false;
@@ -1885,7 +1913,8 @@
       // gap). "Date Paid" below is separate — it's just today's date,
       // recording when this transaction happened; it plays no part in the
       // due-date math itself.
-      var periodFrom = document.getElementById("modePeriodFrom").value || c.dueDate || c.lastPaid || todayStr();
+      var periodFrom = document.getElementById("modePeriodFrom").value ||
+        ((c.status === "suspended" && c.suspendedOn) ? c.suspendedOn : (c.dueDate || c.lastPaid || todayStr()));
       var periodTo = document.getElementById("modePeriodTo").value || addMonthsToDate(periodFrom, months);
       var datePaid = document.getElementById("modeDatePaid").value || todayStr();
 
@@ -1896,7 +1925,7 @@
         status: c.status, lastPaid: c.lastPaid, dueDate: c.dueDate, mode: c.mode,
         collector: c.collector, lastPaidAmount: c.lastPaidAmount, monthsPaid: c.monthsPaid,
         periodFrom: c.periodFrom, periodTo: c.periodTo, lastBillingNote: c.lastBillingNote,
-        paidRecordedOn: c.paidRecordedOn
+        paidRecordedOn: c.paidRecordedOn, suspendedOn: c.suspendedOn
       };
 
       c.status = "paid";
@@ -1911,6 +1940,7 @@
       c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
       c.lastPaymentSnapshot = snapshot;
+      delete c.suspendedOn; // back in service — no longer relevant until suspended again
       var logEntry = logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
         { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount });
       c.lastPaymentLogId = logEntry.id;
@@ -1929,6 +1959,7 @@
     c.mode = snap.mode; c.collector = snap.collector; c.lastPaidAmount = snap.lastPaidAmount;
     c.monthsPaid = snap.monthsPaid; c.periodFrom = snap.periodFrom; c.periodTo = snap.periodTo;
     c.lastBillingNote = snap.lastBillingNote; c.paidRecordedOn = snap.paidRecordedOn;
+    if(snap.suspendedOn){ c.suspendedOn = snap.suspendedOn; } else { delete c.suspendedOn; }
     // Tag the ORIGINAL "paid" log entry as cancelled (rather than deleting
     // it) so it stops counting toward collection totals, but still shows up
     // in Payment History and the Report detail table — struck through and
@@ -2036,6 +2067,11 @@
       badge.style.display = "";
       badge.innerHTML = "<span class='badge paid'>" + t("optPaid") + "</span> " +
         (c.lastPaid ? (t("lblLastPaid") + ": " + escapeHtml(fmtPeriodDate(c.lastPaid))) : "");
+    }else if(pendingStatus === "suspended" && c && c.suspendedOn){
+      badge.style.display = "";
+      badge.innerHTML = "<span class='badge suspended'>" + t("optSuspended") + "</span> " +
+        t("lblSuspendedOn") + ": " + escapeHtml(fmtPeriodDate(c.suspendedOn)) +
+        " <span style='opacity:0.75;'>(" + t("suspendedOnHint") + ")</span>";
     }else{
       badge.style.display = "none";
     }
@@ -2088,6 +2124,16 @@
     // still calculates a correct future due date on its own for normal
     // day-to-day payments.
     var dueDateVal = document.getElementById("fDueDate").value;
+    var suspendedOnVal = prev.suspendedOn;
+    if(pendingStatus === "suspended" && prev.status !== "suspended"){
+      // Newly suspended right now — remember today as the point their
+      // service (and their debt clock) stopped, so that whenever they
+      // eventually pay, Mark Paid can calculate the new due date from this
+      // date instead of from the original overdue due date.
+      suspendedOnVal = todayStr();
+    }else if(pendingStatus !== "suspended"){
+      suspendedOnVal = undefined;
+    }
     state.data[id] = Object.assign({}, prev, {
       name:name, mobile:mobile, amount:amount, status:pendingStatus,
       lastPaid: lastPaidVal,
@@ -2095,7 +2141,8 @@
       stb: document.getElementById("fStb").value.trim(),
       mode: document.getElementById("fMode").value,
       collector: collectorVal,
-      notes: document.getElementById("fNotes").value.trim()
+      notes: document.getElementById("fNotes").value.trim(),
+      suspendedOn: suspendedOnVal
     });
     // Snapshot the paid amount and the date this collection counts under in
     // the Report — this follows Last Paid Date (which staff can backdate),
@@ -2861,6 +2908,34 @@
       localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
       endApplyingRemote();
     });
+
+    // ---- Old-device tripwire ----
+    // Every up-to-date device stamps a schemaVersion marker whenever it
+    // pushes. An OLD app version doesn't know this marker exists, and saves
+    // by replacing the entire shared record in one shot — which wipes this
+    // marker out as a side effect, along with everyone's current data. If
+    // this marker ever goes missing after we've seen it present, that's
+    // proof an outdated device just clobbered the shared data, and it's
+    // surfaced immediately instead of silently corrupting records that
+    // nobody notices until a customer's payment mysteriously reverts.
+    syncRefs.schemaVersion = fbDb.ref(base + "/schemaVersion");
+    var sawSchemaVersion = false;
+    syncRefs.schemaVersion.on("value", function(snapshot){
+      var val = snapshot.val();
+      if(val && val >= SCHEMA_VERSION){
+        sawSchemaVersion = true;
+      }else if(sawSchemaVersion && !isApplyingRemote){
+        alert(
+          "Warning: an older version of this app on another device just overwrote shared data " +
+          "(Cloud Sync detected a full reset of the shared record). Please make sure every device — " +
+          "phone and computer — is running the exact same, latest copy of this file, then check recent " +
+          "customer records and the Collection Report to confirm nothing was lost."
+        );
+        pushFullSnapshotToCloud();
+      }
+      // Keep our own marker current so this device is recognized as up to date.
+      fbDb.ref(base + "/schemaVersion").set(SCHEMA_VERSION);
+    });
   }
 
   function detachSyncListeners(){
@@ -2871,26 +2946,30 @@
   }
 
   function pushCustomerToCloud(id){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    if(!syncEnabled || !fbDb) return;
+    if(isApplyingRemote){ pendingCustomerPushes[id] = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
     var val = state.data[id];
     fbDb.ref("cabletv_shops/" + conf.roomId + "/data/" + id).set(val === undefined ? null : val);
   }
   function pushSettingsToCloud(){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    if(!syncEnabled || !fbDb) return;
+    if(isApplyingRemote){ pendingOtherPushes.settings = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
     fbDb.ref("cabletv_shops/" + conf.roomId + "/settings").set(state.settings);
   }
   function pushCategoriesToCloud(){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    if(!syncEnabled || !fbDb) return;
+    if(isApplyingRemote){ pendingOtherPushes.categories = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
     fbDb.ref("cabletv_shops/" + conf.roomId + "/categories").set(state.categories);
   }
   function pushStaffToCloud(){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    if(!syncEnabled || !fbDb) return;
+    if(isApplyingRemote){ pendingOtherPushes.staff = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
     fbDb.ref("cabletv_shops/" + conf.roomId + "/staff").set(state.staff);
@@ -2909,7 +2988,7 @@
     if(!conf) return;
     var activityById = {};
     state.activityLog.forEach(function(e){ activityById[e.id] = e; });
-    var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: activityById, updatedAt: Date.now() };
+    var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: activityById, updatedAt: Date.now(), schemaVersion: SCHEMA_VERSION };
     fbDb.ref("cabletv_shops/" + conf.roomId).set(payload);
   }
 
@@ -3110,9 +3189,10 @@
     lastReportDetailRows = rows;
     var body = document.getElementById("reportDetailBody");
     if(!rows.length){
-      body.innerHTML = "<tr><td colspan='7' style='padding:10px;text-align:center;color:#888;'>No payments in this range</td></tr>";
+      body.innerHTML = "<tr><td colspan='8' style='padding:10px;text-align:center;color:#888;'>No payments in this range</td></tr>";
       return;
     }
+    var officeView = isOffice();
     body.innerHTML = rows.map(function(e){
       var d = new Date(e.time);
       var dateStr = d.toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
@@ -3128,6 +3208,12 @@
       }
       var rowStyle = e.cancelled ? "border-top:1px solid #eee;opacity:0.6;text-decoration:line-through;" : "border-top:1px solid #eee;";
       var cancelTag = e.cancelled ? " <span style='text-decoration:none;display:inline-block;color:#B23A2E;font-weight:700;font-size:10px;border:1px solid #B23A2E;border-radius:4px;padding:1px 4px;margin-left:4px;'>CANCELLED</span>" : "";
+      var actionCell = "";
+      if(officeView){
+        actionCell = "<td style='padding:6px 8px;text-decoration:none;'>" +
+          (e.cancelled ? "" : "<button type='button' class='report-cancel-btn' data-entry-id='"+escapeHtml(e.id||"")+"' style='color:#B23A2E;border:1px solid #B23A2E;background:#fff;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;'>Cancel</button>") +
+          "</td>";
+      }
       return "<tr style='"+rowStyle+"'>" +
         "<td style='padding:6px 8px;'>"+escapeHtml(e.name||"")+cancelTag+"</td>" +
         "<td style='padding:6px 8px;'>"+escapeHtml(e.box||"")+"</td>" +
@@ -3136,8 +3222,38 @@
         "<td style='padding:6px 8px;'>"+escapeHtml(mode)+"</td>" +
         "<td style='padding:6px 8px;'>"+escapeHtml(collector)+"</td>" +
         "<td style='padding:6px 8px;text-align:right;'>"+amountCell+"</td>" +
+        actionCell +
         "</tr>";
     }).join("");
+    if(officeView){
+      body.querySelectorAll(".report-cancel-btn").forEach(function(btn){
+        btn.addEventListener("click", function(){
+          cancelPaymentEntry(btn.getAttribute("data-entry-id"));
+        });
+      });
+    }
+  }
+
+  // Cancelling from the Report works on ANY payment row, but to keep a
+  // customer's billing history mathematically consistent, it only actually
+  // reverses their MOST RECENT payment — same rule as the Cancel Payment
+  // button on their box. If an older row is picked, explain why and point
+  // to what can be cancelled instead, rather than silently doing nothing
+  // or corrupting later payments that were calculated on top of this one.
+  function cancelPaymentEntry(entryId){
+    var entry = state.activityLog.filter(function(e){ return e.id === entryId; })[0];
+    if(!entry){ alert("Couldn't find that payment."); return; }
+    var c = state.data[entry.box];
+    if(!c){ alert("That customer no longer exists."); return; }
+    if(c.lastPaymentLogId !== entryId){
+      alert(
+        (c.name || entry.box) + "'s most recent payment isn't this one, so cancelling it here would leave their later payment's dates inconsistent. " +
+        "Cancel their most recent payment first (from their box, or find it in this list), then this one can be cancelled next if still needed."
+      );
+      return;
+    }
+    cancelLastPayment(entry.box);
+    renderReport();
   }
   document.getElementById("reportDownloadBtn").addEventListener("click", function(){
     if(!lastReportDetailRows.length){ alert("No payments in this range to download."); return; }
