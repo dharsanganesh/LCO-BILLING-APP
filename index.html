@@ -906,6 +906,7 @@
       addTitle:"Add Customer", editTitle:"Edit Customer", boxLabel:"Box",
       lblName:"Customer Name", lblMobile:"Mobile Number (optional)", lblAmount:"Plan Amount (₹)",
       lblLastPaid:"Last Paid Date", lblDueDate:"Next Due Date", lblStatus:"Payment Status",
+      lblSuspendedOn:"Suspended on", suspendedOnHint:"Mark Paid will calculate the new due date from this date, not from today",
       lblMode:"Collection Mode", lblNotes:"Notes (optional)", lblCollector:"Collected By", lblModeCollector:"Collected By", lblModeMonths:"Paid For",
       lblStb:"STB / Box No (optional)",
       lblModeName:"Name", lblModeMobile:"Mobile", lblModePlanAmount:"Plan Amount (₹)", lblModeAmountReceived:"Amount Received (₹)",
@@ -990,6 +991,7 @@
       addTitle:"வாடிக்கையாளரைச் சேர்", editTitle:"வாடிக்கையாளரைத் திருத்து", boxLabel:"பாக்ஸ்",
       lblName:"வாடிக்கையாளர் பெயர்", lblMobile:"மொபைல் எண் (விருப்பம்)", lblAmount:"திட்ட தொகை (₹)",
       lblLastPaid:"கடைசியாக செலுத்திய தேதி", lblDueDate:"அடுத்த செலுத்த வேண்டிய தேதி", lblStatus:"கட்டண நிலை",
+      lblSuspendedOn:"இடைநிறுத்தப்பட்ட தேதி", suspendedOnHint:"Mark Paid இந்த தேதியிலிருந்து புதிய தேதியை கணக்கிடும், இன்றைய தேதியிலிருந்து அல்ல",
       lblMode:"வசூல் முறை", lblNotes:"குறிப்புகள் (விருப்பம்)", lblCollector:"யார் வசூலித்தார்", lblModeCollector:"யார் வசூலித்தார்", lblModeMonths:"எத்தனை மாதங்களுக்கு செலுத்துகிறார்",
       lblStb:"STB / பாக்ஸ் எண் (விருப்பம்)",
       lblModeName:"பெயர்", lblModeMobile:"மொபைல்", lblModePlanAmount:"திட்ட தொகை (₹)", lblModeAmountReceived:"பெறப்பட்ட தொகை (₹)",
@@ -1180,8 +1182,24 @@
   };
   var fbApp = null, fbDb = null, syncRefs = {}, syncEnabled = false, isApplyingRemote = false;
   var applyingRemoteCount = 0;
+  var pendingCustomerPushes = {};
+  var pendingOtherPushes = {}; // settings/categories/staff — flags, not ids
   function beginApplyingRemote(){ applyingRemoteCount++; isApplyingRemote = true; }
-  function endApplyingRemote(){ applyingRemoteCount = Math.max(0, applyingRemoteCount - 1); isApplyingRemote = applyingRemoteCount > 0; }
+  function endApplyingRemote(){
+    applyingRemoteCount = Math.max(0, applyingRemoteCount - 1);
+    isApplyingRemote = applyingRemoteCount > 0;
+    if(!isApplyingRemote){
+      // Anything that tried to push WHILE a remote update was being applied
+      // got silently skipped at the time (to avoid re-echoing what we just
+      // received) — flush those now so nothing is ever lost, only delayed.
+      Object.keys(pendingCustomerPushes).forEach(function(id){ pushCustomerToCloud(id); });
+      pendingCustomerPushes = {};
+      if(pendingOtherPushes.settings){ pushSettingsToCloud(); }
+      if(pendingOtherPushes.categories){ pushCategoriesToCloud(); }
+      if(pendingOtherPushes.staff){ pushStaffToCloud(); }
+      pendingOtherPushes = {};
+    }
+  }
 
   function t(key){ return (I18N[state.lang] && I18N[state.lang][key] !== undefined) ? I18N[state.lang][key] : I18N.en[key]; }
 
@@ -1858,7 +1876,11 @@
     var today = todayStr();
     document.getElementById("modeDatePaid").value = today;
     document.getElementById("modeCurrentDateDisplay").value = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
-    var periodStart = c.dueDate || c.lastPaid || today;
+    // If this box is currently Suspended, the customer wasn't accruing
+    // service (or debt) while suspended — so the new billing period should
+    // count from the date the box was suspended, not from the original
+    // overdue due date and not from today's payment date.
+    var periodStart = (c.status === "suspended" && c.suspendedOn) ? c.suspendedOn : (c.dueDate || c.lastPaid || today);
     document.getElementById("modePeriodFrom").value = periodStart;
     document.getElementById("modeNotes").value = "";
     modeAmountTouched = false; modeToTouched = false;
@@ -1885,7 +1907,8 @@
       // gap). "Date Paid" below is separate — it's just today's date,
       // recording when this transaction happened; it plays no part in the
       // due-date math itself.
-      var periodFrom = document.getElementById("modePeriodFrom").value || c.dueDate || c.lastPaid || todayStr();
+      var periodFrom = document.getElementById("modePeriodFrom").value ||
+        ((c.status === "suspended" && c.suspendedOn) ? c.suspendedOn : (c.dueDate || c.lastPaid || todayStr()));
       var periodTo = document.getElementById("modePeriodTo").value || addMonthsToDate(periodFrom, months);
       var datePaid = document.getElementById("modeDatePaid").value || todayStr();
 
@@ -1896,7 +1919,7 @@
         status: c.status, lastPaid: c.lastPaid, dueDate: c.dueDate, mode: c.mode,
         collector: c.collector, lastPaidAmount: c.lastPaidAmount, monthsPaid: c.monthsPaid,
         periodFrom: c.periodFrom, periodTo: c.periodTo, lastBillingNote: c.lastBillingNote,
-        paidRecordedOn: c.paidRecordedOn
+        paidRecordedOn: c.paidRecordedOn, suspendedOn: c.suspendedOn
       };
 
       c.status = "paid";
@@ -1911,6 +1934,7 @@
       c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
       c.lastPaymentSnapshot = snapshot;
+      delete c.suspendedOn; // back in service — no longer relevant until suspended again
       var logEntry = logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
         { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount });
       c.lastPaymentLogId = logEntry.id;
@@ -1929,6 +1953,7 @@
     c.mode = snap.mode; c.collector = snap.collector; c.lastPaidAmount = snap.lastPaidAmount;
     c.monthsPaid = snap.monthsPaid; c.periodFrom = snap.periodFrom; c.periodTo = snap.periodTo;
     c.lastBillingNote = snap.lastBillingNote; c.paidRecordedOn = snap.paidRecordedOn;
+    if(snap.suspendedOn){ c.suspendedOn = snap.suspendedOn; } else { delete c.suspendedOn; }
     // Tag the ORIGINAL "paid" log entry as cancelled (rather than deleting
     // it) so it stops counting toward collection totals, but still shows up
     // in Payment History and the Report detail table — struck through and
@@ -2036,6 +2061,11 @@
       badge.style.display = "";
       badge.innerHTML = "<span class='badge paid'>" + t("optPaid") + "</span> " +
         (c.lastPaid ? (t("lblLastPaid") + ": " + escapeHtml(fmtPeriodDate(c.lastPaid))) : "");
+    }else if(pendingStatus === "suspended" && c && c.suspendedOn){
+      badge.style.display = "";
+      badge.innerHTML = "<span class='badge suspended'>" + t("optSuspended") + "</span> " +
+        t("lblSuspendedOn") + ": " + escapeHtml(fmtPeriodDate(c.suspendedOn)) +
+        " <span style='opacity:0.75;'>(" + t("suspendedOnHint") + ")</span>";
     }else{
       badge.style.display = "none";
     }
@@ -2088,6 +2118,16 @@
     // still calculates a correct future due date on its own for normal
     // day-to-day payments.
     var dueDateVal = document.getElementById("fDueDate").value;
+    var suspendedOnVal = prev.suspendedOn;
+    if(pendingStatus === "suspended" && prev.status !== "suspended"){
+      // Newly suspended right now — remember today as the point their
+      // service (and their debt clock) stopped, so that whenever they
+      // eventually pay, Mark Paid can calculate the new due date from this
+      // date instead of from the original overdue due date.
+      suspendedOnVal = todayStr();
+    }else if(pendingStatus !== "suspended"){
+      suspendedOnVal = undefined;
+    }
     state.data[id] = Object.assign({}, prev, {
       name:name, mobile:mobile, amount:amount, status:pendingStatus,
       lastPaid: lastPaidVal,
@@ -2095,7 +2135,8 @@
       stb: document.getElementById("fStb").value.trim(),
       mode: document.getElementById("fMode").value,
       collector: collectorVal,
-      notes: document.getElementById("fNotes").value.trim()
+      notes: document.getElementById("fNotes").value.trim(),
+      suspendedOn: suspendedOnVal
     });
     // Snapshot the paid amount and the date this collection counts under in
     // the Report — this follows Last Paid Date (which staff can backdate),
@@ -2871,26 +2912,30 @@
   }
 
   function pushCustomerToCloud(id){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    if(!syncEnabled || !fbDb) return;
+    if(isApplyingRemote){ pendingCustomerPushes[id] = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
     var val = state.data[id];
     fbDb.ref("cabletv_shops/" + conf.roomId + "/data/" + id).set(val === undefined ? null : val);
   }
   function pushSettingsToCloud(){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    if(!syncEnabled || !fbDb) return;
+    if(isApplyingRemote){ pendingOtherPushes.settings = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
     fbDb.ref("cabletv_shops/" + conf.roomId + "/settings").set(state.settings);
   }
   function pushCategoriesToCloud(){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    if(!syncEnabled || !fbDb) return;
+    if(isApplyingRemote){ pendingOtherPushes.categories = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
     fbDb.ref("cabletv_shops/" + conf.roomId + "/categories").set(state.categories);
   }
   function pushStaffToCloud(){
-    if(!syncEnabled || !fbDb || isApplyingRemote) return;
+    if(!syncEnabled || !fbDb) return;
+    if(isApplyingRemote){ pendingOtherPushes.staff = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
     fbDb.ref("cabletv_shops/" + conf.roomId + "/staff").set(state.staff);
