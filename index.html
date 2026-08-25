@@ -2990,34 +2990,45 @@
     var conf = loadSyncConfig();
     if(!conf) return;
     var val = state.data[id];
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/data/" + id).set(val === undefined ? null : val);
+    if(val === undefined){ fbDb.ref("cabletv_shops/" + conf.roomId + "/data/" + id).set(null); return; }
+    // Firebase's SDK throws SYNCHRONOUSLY if the object being saved contains
+    // an "undefined" value anywhere inside it — a very easy trap to fall
+    // into with optional fields like suspendedOn, or a customer's very
+    // first-ever payment where lastPaid/dueDate/etc. were never set before.
+    // That throw was silently aborting Mark Paid mid-way through: the data
+    // had already saved locally by this point, but the code never reached
+    // the lines that close the popup and refresh the screen. A JSON
+    // round-trip strips undefined values out safely (same as localStorage
+    // already does) before Firebase ever sees the object.
+    var safeVal = JSON.parse(JSON.stringify(val));
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/data/" + id).set(safeVal);
   }
   function pushSettingsToCloud(){
     if(!syncEnabled || !fbDb) return;
     if(isApplyingRemote){ pendingOtherPushes.settings = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/settings").set(state.settings);
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/settings").set(JSON.parse(JSON.stringify(state.settings)));
   }
   function pushCategoriesToCloud(){
     if(!syncEnabled || !fbDb) return;
     if(isApplyingRemote){ pendingOtherPushes.categories = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/categories").set(state.categories);
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/categories").set(JSON.parse(JSON.stringify(state.categories)));
   }
   function pushStaffToCloud(){
     if(!syncEnabled || !fbDb) return;
     if(isApplyingRemote){ pendingOtherPushes.staff = true; return; }
     var conf = loadSyncConfig();
     if(!conf) return;
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/staff").set(state.staff);
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/staff").set(JSON.parse(JSON.stringify(state.staff)));
   }
   function pushActivityEntryToCloud(entry){
     if(!syncEnabled || !fbDb || isApplyingRemote) return;
     var conf = loadSyncConfig();
     if(!conf) return;
-    fbDb.ref("cabletv_shops/" + conf.roomId + "/activityLog/" + entry.id).set(entry);
+    fbDb.ref("cabletv_shops/" + conf.roomId + "/activityLog/" + entry.id).set(JSON.parse(JSON.stringify(entry)));
   }
   // Full-room overwrite — used ONLY to seed a brand-new empty sync room with
   // this device's existing local data. Never called from a normal save.
@@ -3035,7 +3046,7 @@
     var activityById = {};
     state.activityLog.forEach(function(e){ activityById[e.id] = e; });
     var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: activityById, updatedAt: now, schemaVersion: SCHEMA_VERSION };
-    fbDb.ref("cabletv_shops/" + conf.roomId).set(payload);
+    fbDb.ref("cabletv_shops/" + conf.roomId).set(JSON.parse(JSON.stringify(payload)));
   }
 
   function connectSync(configObj, roomId, silent){
