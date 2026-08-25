@@ -1940,6 +1940,7 @@
       c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
       c.lastPaymentSnapshot = snapshot;
+      c.updatedAt = Date.now();
       delete c.suspendedOn; // back in service — no longer relevant until suspended again
       var logEntry = logActivity("paid", id, c.name, m.toLowerCase() + " · " + collector + " · " + months + "mo · " + fmtMoney(collectedAmt),
         { amount: collectedAmt, mode: m.toLowerCase(), collector: collector, months: months, planAmount: c.amount });
@@ -1959,6 +1960,7 @@
     c.mode = snap.mode; c.collector = snap.collector; c.lastPaidAmount = snap.lastPaidAmount;
     c.monthsPaid = snap.monthsPaid; c.periodFrom = snap.periodFrom; c.periodTo = snap.periodTo;
     c.lastBillingNote = snap.lastBillingNote; c.paidRecordedOn = snap.paidRecordedOn;
+    c.updatedAt = Date.now();
     if(snap.suspendedOn){ c.suspendedOn = snap.suspendedOn; } else { delete c.suspendedOn; }
     // Tag the ORIGINAL "paid" log entry as cancelled (rather than deleting
     // it) so it stops counting toward collection totals, but still shows up
@@ -2142,7 +2144,8 @@
       mode: document.getElementById("fMode").value,
       collector: collectorVal,
       notes: document.getElementById("fNotes").value.trim(),
-      suspendedOn: suspendedOnVal
+      suspendedOn: suspendedOnVal,
+      updatedAt: Date.now()
     });
     // Snapshot the paid amount and the date this collection counts under in
     // the Report — this follows Last Paid Date (which staff can backdate),
@@ -2850,10 +2853,46 @@
     syncRefs.data.on("value", function(snapshot){
       updateSyncStatus("connected");
       beginApplyingRemote();
-      state.data = snapshot.val() || {};
+      // Merge by "updatedAt", not blind replace. Blindly replacing local
+      // data with whatever the cloud happens to hold was the root cause of
+      // every sync bug so far: a device reconnecting after making offline
+      // changes would have its own newer edits silently discarded just
+      // because the cloud "arrived last". Now each customer record is kept
+      // from whichever side genuinely has the more recent updatedAt, and if
+      // this device's local copy wins, it re-pushes that customer so other
+      // devices catch up too — instead of the most-recently-loaded device
+      // always winning regardless of which change is actually newer.
+      var remote = snapshot.val() || {};
+      var merged = {};
+      var idsToRepush = [];
+      var allIds = {};
+      Object.keys(state.data).forEach(function(id){ allIds[id] = true; });
+      Object.keys(remote).forEach(function(id){ allIds[id] = true; });
+      Object.keys(allIds).forEach(function(id){
+        var localC = state.data[id];
+        var remoteC = remote[id];
+        if(!remoteC){
+          // Not in the cloud at all yet — keep our local copy (a new
+          // customer we added, or an offline edit not yet pushed) and make
+          // sure it actually reaches the cloud.
+          if(localC){ merged[id] = localC; idsToRepush.push(id); }
+          return;
+        }
+        if(!localC){ merged[id] = remoteC; return; }
+        var localTime = localC.updatedAt || 0;
+        var remoteTime = remoteC.updatedAt || 0;
+        if(localTime > remoteTime){
+          merged[id] = localC;
+          idsToRepush.push(id);
+        }else{
+          merged[id] = remoteC;
+        }
+      });
+      state.data = merged;
       localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
       renderAll();
       endApplyingRemote();
+      idsToRepush.forEach(function(id){ pushCustomerToCloud(id); });
     }, function(){ updateSyncStatus("error"); });
 
     syncRefs.settings = fbDb.ref(base + "/settings");
@@ -2986,9 +3025,16 @@
     if(!syncEnabled || !fbDb) return;
     var conf = loadSyncConfig();
     if(!conf) return;
+    var now = Date.now();
+    var stampedData = {};
+    Object.keys(state.data).forEach(function(id){
+      stampedData[id] = Object.assign({}, state.data[id], { updatedAt: now });
+    });
+    state.data = stampedData;
+    localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
     var activityById = {};
     state.activityLog.forEach(function(e){ activityById[e.id] = e; });
-    var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: activityById, updatedAt: Date.now(), schemaVersion: SCHEMA_VERSION };
+    var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: activityById, updatedAt: now, schemaVersion: SCHEMA_VERSION };
     fbDb.ref("cabletv_shops/" + conf.roomId).set(payload);
   }
 
