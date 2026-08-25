@@ -715,6 +715,7 @@
     </div>
 
     <div class="report-grid" id="reportGrid"></div>
+    <div id="reportPackageSection"></div>
 
     <div class="pie-wrap">
       <svg id="pieSvg" width="180" height="180" viewBox="0 0 180 180"></svg>
@@ -922,6 +923,7 @@
       staffBtn:"👤 Staff", staffTitle:"Manage Staff", staffSub:"Add the names of members who collect payments",
       lblNewStaff:"New Staff Name", addStaffBtn:"➕ Add Staff", staffExists:"This staff name already exists.",
       staffAdded:"Staff added successfully.", deleteStaffBtn:"Remove", reportByStaff:"Collected by", collectorOffice:"Office",
+      reportByPackage:"Package-wise", reportUnknownPlan:"No plan set", reportPackSuffix:"pack", reportTxnSuffix:"txn",
       syncBtnLabel:"Cloud Sync", syncTitle:"Cloud Sync", syncSub:"Connect both devices to the same live data",
       lblSyncConfig:"Firebase Config (paste the code from your Firebase project)",
       lblRoomId:"Shop Sync Code (make up any word — both devices must use the SAME code)",
@@ -1007,6 +1009,7 @@
       staffBtn:"👤 ஊழியர்", staffTitle:"ஊழியர்களை நிர்வகி", staffSub:"பணம் வசூலிக்கும் நபர்களின் பெயர்களைச் சேர்க்கவும்",
       lblNewStaff:"புதிய ஊழியர் பெயர்", addStaffBtn:"➕ ஊழியரைச் சேர்", staffExists:"இந்த பெயர் ஏற்கனவே உள்ளது.",
       staffAdded:"ஊழியர் வெற்றிகரமாக சேர்க்கப்பட்டார்.", deleteStaffBtn:"நீக்கு", reportByStaff:"வசூலித்தவர்", collectorOffice:"அலுவலகம்",
+      reportByPackage:"திட்டம் வாரியாக", reportUnknownPlan:"திட்டம் இல்லை", reportPackSuffix:"திட்டம்", reportTxnSuffix:"பரிவர்த்தனை",
       syncBtnLabel:"கிளவுட் சின்க்", syncTitle:"கிளவுட் சின்க்", syncSub:"இரு சாதனங்களையும் ஒரே நேரடி தரவுடன் இணைக்கவும்",
       lblSyncConfig:"Firebase கட்டமைப்பு (உங்கள் Firebase திட்டத்திலிருந்து ஒட்டவும்)",
       lblRoomId:"கடை சின்க் குறியீடு (எந்த வார்த்தையையும் உருவாக்கவும் — இரு சாதனங்களும் ஒரே குறியீட்டைப் பயன்படுத்த வேண்டும்)",
@@ -3198,6 +3201,7 @@
     renderReportFilters();
     var counts = computeStatusCounts(fromDate || null, toDate || null, reportModeFilter, reportCollectorFilter);
     var totalCollection = counts.cash + counts.upi;
+    renderReportDetail(fromDate, toDate, reportModeFilter, reportCollectorFilter); // populates lastReportDetailRows, used below too
     var reportGrid = document.getElementById("reportGrid");
     var html =
       "<div class='stat-card collected'><div class='num'>"+fmtMoney(totalCollection)+"</div><div class='lbl'>"+t("reportTotalCollection")+"</div></div>" +
@@ -3212,6 +3216,40 @@
       });
     }
     reportGrid.innerHTML = html;
+
+    // Package-wise breakdown — how much of this collection came from each
+    // distinct plan price (₹250 pack, ₹270 pack, etc), using the same
+    // filtered rows as the detail table below, so date/mode/collector
+    // filters apply here too.
+    var pkgMap = {};
+    lastReportDetailRows.forEach(function(e){
+      if(e.cancelled) return;
+      var plan = (e.meta && e.meta.planAmount != null) ? e.meta.planAmount : null;
+      var amt = e.meta && e.meta.amount != null ? e.meta.amount : (parseFloat((e.extra||"").replace(/[^\d.]/g,"")) || 0);
+      var key = plan != null ? String(plan) : "unknown";
+      if(!pkgMap[key]) pkgMap[key] = { count:0, total:0 };
+      pkgMap[key].count++;
+      pkgMap[key].total += amt;
+    });
+    var pkgKeys = Object.keys(pkgMap).sort(function(a,b){
+      if(a === "unknown") return 1;
+      if(b === "unknown") return -1;
+      return Number(a) - Number(b);
+    });
+    var pkgSection = document.getElementById("reportPackageSection");
+    if(pkgKeys.length){
+      var pkgHtml = "<div style='margin-top:10px;'><div style='font-weight:700;margin-bottom:6px;'>" + t("reportByPackage") + "</div><div style='display:flex;gap:8px;flex-wrap:wrap;'>";
+      pkgKeys.forEach(function(k){
+        var p = pkgMap[k];
+        var label = (k === "unknown") ? t("reportUnknownPlan") : (fmtMoney(Number(k)) + " " + t("reportPackSuffix"));
+        pkgHtml += "<div class='stat-card'><div class='num'>" + fmtMoney(p.total) + "</div><div class='lbl'>" + escapeHtml(label) + " · " + p.count + " " + t("reportTxnSuffix") + "</div></div>";
+      });
+      pkgHtml += "</div></div>";
+      pkgSection.innerHTML = pkgHtml;
+    }else{
+      pkgSection.innerHTML = "";
+    }
+
     var subEl = document.getElementById("reportSub");
     if(fromDate || toDate){
       var rangeText = (fromDate || "…") + " to " + (toDate || "…");
@@ -3220,7 +3258,6 @@
       subEl.textContent = t("reportSub");
     }
     drawPie(counts);
-    renderReportDetail(fromDate, toDate, reportModeFilter, reportCollectorFilter);
   }
   function reportDayStr(ts){
     var d = new Date(ts);
@@ -3297,19 +3334,52 @@
   // button on their box. If an older row is picked, explain why and point
   // to what can be cancelled instead, rather than silently doing nothing
   // or corrupting later payments that were calculated on top of this one.
+  var CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+
   function cancelPaymentEntry(entryId){
     var entry = state.activityLog.filter(function(e){ return e.id === entryId; })[0];
     if(!entry){ alert("Couldn't find that payment."); return; }
+    if(entry.cancelled){ alert("This payment is already cancelled."); return; }
     var c = state.data[entry.box];
     if(!c){ alert("That customer no longer exists."); return; }
-    if(c.lastPaymentLogId !== entryId){
+
+    if(c.lastPaymentLogId === entryId){
+      // It's their most recent payment — full reversal, exactly as before:
+      // status, due date, and amount all revert to how they were.
+      cancelLastPayment(entry.box);
+      renderReport();
+      return;
+    }
+
+    var withinWindow = (Date.now() - (entry.time || 0)) <= CANCEL_WINDOW_MS;
+    if(!withinWindow){
       alert(
-        (c.name || entry.box) + "'s most recent payment isn't this one, so cancelling it here would leave their later payment's dates inconsistent. " +
-        "Cancel their most recent payment first (from their box, or find it in this list), then this one can be cancelled next if still needed."
+        (c.name || entry.box) + "'s most recent payment isn't this one, and this payment is also older than 24 hours, so it can no longer be cancelled here. " +
+        "Cancel their most recent payment first if you need to work backward, or correct the customer's status/dates manually in Edit Customer instead."
       );
       return;
     }
-    cancelLastPayment(entry.box);
+
+    // Within 24 hours, but a NEWER payment already exists for this customer
+    // — later payments (and the customer's current due date) already built
+    // on top of this one, so we can't safely un-calculate the dates without
+    // risking leaving them wrong. What CAN be safely done: remove this
+    // specific amount from the money totals and mark it cancelled in the
+    // history/report, as a financial correction — without touching the
+    // customer's current status or due date.
+    if(!window.confirm(
+      (c.name || entry.box) + " has a later payment already, so cancelling this one will remove " + fmtMoney(entry.meta ? entry.meta.amount : 0) +
+      " from the collection totals and mark it Cancelled in the history, but their CURRENT status and due date will stay exactly as they are now " +
+      "(their later payment already covers that). Continue?"
+    )) return;
+
+    entry.cancelled = true;
+    entry.cancelledAt = Date.now();
+    entry.cancelledBy = state.session ? (state.session.role === "office" ? "Office" : state.session.staffName) : "Unknown";
+    entry.cancelledScope = "financial-only";
+    saveActivity();
+    pushActivityEntryToCloud(entry);
+    logActivity("payment-cancelled", entry.box, entry.name || c.name, "Financial-only correction (later payment already exists) — " + fmtMoney(entry.meta ? entry.meta.amount : 0));
     renderReport();
   }
   document.getElementById("reportDownloadBtn").addEventListener("click", function(){
