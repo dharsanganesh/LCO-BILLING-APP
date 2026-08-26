@@ -722,6 +722,14 @@
       <div class="pie-legend" id="pieLegend"></div>
     </div>
 
+    <div style="margin-top:14px;">
+      <div style="font-weight:700;margin-bottom:6px;" id="planPieTitle">Customers by Plan</div>
+      <div class="pie-wrap">
+        <svg id="planPieSvg" width="180" height="180" viewBox="0 0 180 180"></svg>
+        <div class="pie-legend" id="planPieLegend"></div>
+      </div>
+    </div>
+
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;margin-bottom:8px;">
       <h3 id="reportDetailTitle" style="margin:0;">Collection Details</h3>
       <button class="btn btn-outline btn-sm" id="reportDownloadBtn">⬇ Download CSV</button>
@@ -924,6 +932,7 @@
       lblNewStaff:"New Staff Name", addStaffBtn:"➕ Add Staff", staffExists:"This staff name already exists.",
       staffAdded:"Staff added successfully.", deleteStaffBtn:"Remove", reportByStaff:"Collected by", collectorOffice:"Office",
       reportByPackage:"Package-wise", reportUnknownPlan:"No plan set", reportPackSuffix:"pack", reportTxnSuffix:"txn",
+      reportCustomersByPlan:"Customers by Plan",
       syncBtnLabel:"Cloud Sync", syncTitle:"Cloud Sync", syncSub:"Connect both devices to the same live data",
       lblSyncConfig:"Firebase Config (paste the code from your Firebase project)",
       lblRoomId:"Shop Sync Code (make up any word — both devices must use the SAME code)",
@@ -1010,6 +1019,7 @@
       lblNewStaff:"புதிய ஊழியர் பெயர்", addStaffBtn:"➕ ஊழியரைச் சேர்", staffExists:"இந்த பெயர் ஏற்கனவே உள்ளது.",
       staffAdded:"ஊழியர் வெற்றிகரமாக சேர்க்கப்பட்டார்.", deleteStaffBtn:"நீக்கு", reportByStaff:"வசூலித்தவர்", collectorOffice:"அலுவலகம்",
       reportByPackage:"திட்டம் வாரியாக", reportUnknownPlan:"திட்டம் இல்லை", reportPackSuffix:"திட்டம்", reportTxnSuffix:"பரிவர்த்தனை",
+      reportCustomersByPlan:"திட்டம் வாரியாக வாடிக்கையாளர்கள்",
       syncBtnLabel:"கிளவுட் சின்க்", syncTitle:"கிளவுட் சின்க்", syncSub:"இரு சாதனங்களையும் ஒரே நேரடி தரவுடன் இணைக்கவும்",
       lblSyncConfig:"Firebase கட்டமைப்பு (உங்கள் Firebase திட்டத்திலிருந்து ஒட்டவும்)",
       lblRoomId:"கடை சின்க் குறியீடு (எந்த வார்த்தையையும் உருவாக்கவும் — இரு சாதனங்களும் ஒரே குறியீட்டைப் பயன்படுத்த வேண்டும்)",
@@ -1431,6 +1441,7 @@
     document.getElementById("lblReportTo").textContent = t("lblReportTo");
     document.getElementById("lblReportMode").textContent = t("lblReportMode");
     document.getElementById("lblReportCollector").textContent = t("lblReportCollector");
+    document.getElementById("planPieTitle").textContent = t("reportCustomersByPlan");
     document.getElementById("reportClearBtn").textContent = t("reportClearBtn");
     document.getElementById("reportTodayBtn").textContent = t("reportTodayBtn");
     document.getElementById("reportLast7Btn").textContent = t("reportLast7Btn");
@@ -3258,6 +3269,7 @@
       subEl.textContent = t("reportSub");
     }
     drawPie(counts);
+    drawPlanPie();
   }
   function reportDayStr(ts){
     var d = new Date(ts);
@@ -3614,6 +3626,107 @@
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   });
+
+  var PLAN_PIE_COLORS = ["#1f9d55","#185fa5","#d6a419","#b23a2e","#6a3fa0","#0e8a83","#c76b3c","#4a5a73","#8bb34a","#d1487a"];
+
+  // Customer count by plan price — deliberately ignores paid/unpaid/suspended
+  // status and any report date range, since this is about the customer
+  // BASE, not a collection window. Clicking a slice (or its legend entry)
+  // opens the same customer list used elsewhere in Reports.
+  function drawPlanPie(){
+    var svg = document.getElementById("planPieSvg");
+    var legend = document.getElementById("planPieLegend");
+    svg.innerHTML = "";
+    legend.innerHTML = "";
+    var planMap = {};
+    Object.keys(state.data).forEach(function(id){
+      if(!isBoxVisible(id)) return;
+      var c = state.data[id];
+      var key = String(c.amount != null ? c.amount : "unknown");
+      planMap[key] = (planMap[key] || 0) + 1;
+    });
+    var planKeys = Object.keys(planMap).sort(function(a,b){
+      if(a === "unknown") return 1;
+      if(b === "unknown") return -1;
+      return Number(a) - Number(b);
+    });
+    var total = 0;
+    planKeys.forEach(function(k){ total += planMap[k]; });
+    var segs = planKeys.map(function(k, i){
+      return {
+        key: k,
+        label: (k === "unknown") ? t("reportUnknownPlan") : (fmtMoney(Number(k)) + " " + t("reportPackSuffix")),
+        value: planMap[k],
+        hex: PLAN_PIE_COLORS[i % PLAN_PIE_COLORS.length]
+      };
+    });
+    if(total === 0){
+      var textEl = document.createElementNS("http://www.w3.org/2000/svg","text");
+      textEl.setAttribute("x","90"); textEl.setAttribute("y","90");
+      textEl.setAttribute("text-anchor","middle"); textEl.setAttribute("font-size","11");
+      textEl.setAttribute("fill","#5c6b7a");
+      textEl.textContent = t("pieNoData");
+      svg.appendChild(textEl);
+    }else{
+      var cx=90, cy=90, r=80, startAngle=-90;
+      segs.forEach(function(seg){
+        if(seg.value <= 0) return;
+        var angle = (seg.value/total) * 360;
+        var endAngle = startAngle + angle;
+        var path = describeArc(cx, cy, r, startAngle, endAngle);
+        var p = document.createElementNS("http://www.w3.org/2000/svg","path");
+        p.setAttribute("d", path);
+        p.setAttribute("fill", seg.hex);
+        p.style.cursor = "pointer";
+        p.addEventListener("click", function(){ showListForPlan(seg.key, seg.label); });
+        svg.appendChild(p);
+        startAngle = endAngle;
+      });
+      var circle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      circle.setAttribute("cx","90"); circle.setAttribute("cy","90"); circle.setAttribute("r","38");
+      circle.setAttribute("fill","#ffffff");
+      svg.appendChild(circle);
+      var totalText = document.createElementNS("http://www.w3.org/2000/svg","text");
+      totalText.setAttribute("x","90"); totalText.setAttribute("y","94");
+      totalText.setAttribute("text-anchor","middle"); totalText.setAttribute("font-size","20");
+      totalText.setAttribute("font-weight","800"); totalText.setAttribute("fill","#1c2530");
+      totalText.textContent = total;
+      svg.appendChild(totalText);
+    }
+    segs.forEach(function(seg){
+      var item = document.createElement("div");
+      item.className = "pie-legend-item";
+      item.innerHTML = "<i style='background:"+seg.hex+"'></i><span>"+escapeHtml(seg.label)+" — "+seg.value+"</span>";
+      item.addEventListener("click", function(){ showListForPlan(seg.key, seg.label); });
+      legend.appendChild(item);
+    });
+  }
+
+  function showListForPlan(planKey, label){
+    var body = document.getElementById("listBody");
+    body.innerHTML = "";
+    var found = 0;
+    Object.keys(state.data).forEach(function(id){
+      if(!isBoxVisible(id)) return;
+      var c = state.data[id];
+      var key = String(c.amount != null ? c.amount : "unknown");
+      if(key !== planKey) return;
+      found++;
+      var row = document.createElement("div");
+      row.className = "list-item";
+      row.innerHTML = "<span><span class='nm'>"+escapeHtml(c.name||"")+"</span><br><span class='mm'>"+id+" · "+escapeHtml(c.mobile||"")+"</span></span><span class='mm'>"+fmtMoney(c.amount)+"</span>";
+      row.addEventListener("click", function(){
+        hideOverlay("listOverlay"); hideOverlay("reportOverlay");
+        openCustomerModal(id, c);
+      });
+      body.appendChild(row);
+    });
+    if(found === 0){
+      body.innerHTML = "<div class='empty-state'>"+t("noResultsText")+"</div>";
+    }
+    document.getElementById("listTitle").textContent = t("listTitleFor")(label);
+    showOverlay("listOverlay");
+  }
 
   function showListFor(statusKey, label){
     var body = document.getElementById("listBody");
