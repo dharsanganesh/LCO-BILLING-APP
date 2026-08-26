@@ -564,33 +564,13 @@
         </div>
       </div>
     </div>
-    <div class="row2">
-      <div class="field">
-        <label id="lblModeLastPayment">Last Payment (new)</label>
-        <input id="modeLastPaymentDisplay" type="text" disabled />
-      </div>
-      <div class="field">
-        <label id="lblModeNextPayment">Next Payment</label>
-        <input id="modeNextPaymentDisplay" type="text" disabled />
-      </div>
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label id="lblModeDatePaid">Date Paid</label>
-        <input id="modeDatePaid" type="date" disabled />
-      </div>
-      <div class="field">
-        <label id="lblModeCurrentDate">Current Date</label>
-        <input id="modeCurrentDateDisplay" type="text" disabled />
-      </div>
+    <div class="field">
+      <label id="lblModeDatePaid">Date Paid</label>
+      <input id="modeDatePaid" type="date" disabled />
     </div>
     <div class="field" id="modeCollectorField">
       <label id="lblModeCollector">Collected By</label>
       <select id="modeCollectorSelect"></select>
-    </div>
-    <div class="field">
-      <label id="lblModeNotes">Notes (optional)</label>
-      <textarea id="modeNotes" rows="2"></textarea>
     </div>
     <div class="field">
       <label id="lblModeMode">Mode</label>
@@ -984,6 +964,7 @@
       manualBtnLabel:"Manual", manualTitle:"User Manual", manualSub:"How to use this app",
       actionAdded:"Added customer", actionUpdated:"Updated customer", actionRemoved:"Removed customer", actionPaid:"Marked Paid", actionAutoUnpaid:"Auto-marked Unpaid (due date passed)",
       actionPaymentCancelled:"Payment Cancelled",
+      confirmMarkPaidMsg:"Mark {name} as Paid — {amount} received via {mode}?",
       quickCancelPay:"↩ Cancel Payment",
       confirmCancelPayMsg:"Cancel the last payment for {name} ({amount})? This will revert their status, due date and amount back to before that payment.",
       cancelPayLogMsg:"Reversed a wrongly-made payment of {amount}",
@@ -1071,6 +1052,7 @@
       manualBtnLabel:"கையேடு", manualTitle:"பயனர் கையேடு", manualSub:"இந்த ஆப்பை எப்படி பயன்படுத்துவது",
       actionAdded:"வாடிக்கையாளர் சேர்க்கப்பட்டார்", actionUpdated:"வாடிக்கையாளர் புதுப்பிக்கப்பட்டார்", actionRemoved:"வாடிக்கையாளர் நீக்கப்பட்டார்", actionPaid:"செலுத்தியதாக குறிக்கப்பட்டது", actionAutoUnpaid:"தானாக செலுத்தாதது எனக் குறிக்கப்பட்டது",
       actionPaymentCancelled:"பணம் செலுத்தியது ரத்து செய்யப்பட்டது",
+      confirmMarkPaidMsg:"{name} க்கு {amount} {mode} மூலம் பெறப்பட்டதாக செலுத்தியதாக குறிக்கவா?",
       quickCancelPay:"↩ பணம் ரத்து",
       confirmCancelPayMsg:"{name} க்கான கடைசி பணம் செலுத்துதலை ({amount}) ரத்து செய்யவா? இது நிலை, அடுத்த தேதி மற்றும் தொகையை முந்தைய நிலைக்கு மாற்றும்.",
       cancelPayLogMsg:"தவறாக செலுத்தப்பட்ட {amount} ரத்து செய்யப்பட்டது",
@@ -1354,10 +1336,6 @@
     document.getElementById("lblModeDatePaid").textContent = t("lblModeDatePaid");
     document.getElementById("lblModeStb").textContent = t("lblModeStb");
     document.getElementById("lblModeStatus").textContent = t("lblModeStatus");
-    document.getElementById("lblModeLastPayment").textContent = t("lblModeLastPayment");
-    document.getElementById("lblModeNextPayment").textContent = t("lblModeNextPayment");
-    document.getElementById("lblModeCurrentDate").textContent = t("lblModeCurrentDate");
-    document.getElementById("lblModeNotes").textContent = t("lblModeNotes");
     document.getElementById("lblModeMode").textContent = t("lblModeMode");
     document.getElementById("staffBtn").textContent = t("staffBtn");
     document.getElementById("staffTitle").textContent = t("staffTitle");
@@ -1867,9 +1845,6 @@
       var from = document.getElementById("modePeriodFrom").value;
       document.getElementById("modePeriodTo").value = addMonthsToDate(from, months);
     }
-    var periodToNow = document.getElementById("modePeriodTo").value;
-    document.getElementById("modeLastPaymentDisplay").value = fmtPeriodDate(periodToNow);
-    document.getElementById("modeNextPaymentDisplay").value = fmtPeriodDate(addMonthsToDate(periodToNow, 1));
   }
   function openModePopup(id){
     modePopupTargetId = id;
@@ -1895,14 +1870,12 @@
     document.getElementById("modeMonthsSelect").value = "1";
     var today = todayStr();
     document.getElementById("modeDatePaid").value = today;
-    document.getElementById("modeCurrentDateDisplay").value = new Date().toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
     // If this box is currently Suspended, the customer wasn't accruing
     // service (or debt) while suspended — so the new billing period should
     // count from the date the box was suspended, not from the original
     // overdue due date and not from today's payment date.
     var periodStart = (c.status === "suspended" && c.suspendedOn) ? c.suspendedOn : (c.dueDate || c.lastPaid || today);
     document.getElementById("modePeriodFrom").value = periodStart;
-    document.getElementById("modeNotes").value = "";
     modeAmountTouched = false; modeToTouched = false;
     updateModeCalculatedFields();
     showOverlay("modeOverlay");
@@ -1919,6 +1892,13 @@
       var collector = (state.session && state.session.role === "staff") ? state.session.staffName : document.getElementById("modeCollectorSelect").value;
       var months = Number(document.getElementById("modeMonthsSelect").value) || 1;
       var collectedAmt = Number(document.getElementById("modeAmountReceived").value) || 0;
+
+      var confirmMsg = t("confirmMarkPaidMsg")
+        .replace("{name}", c.name || id)
+        .replace("{amount}", fmtMoney(collectedAmt))
+        .replace("{mode}", m);
+      if(!window.confirm(confirmMsg)) return;
+
       // Next Due Date = the customer's billing due date + the number of
       // months paid — full stop. This is deliberately NOT clamped to
       // "at least today": if someone is 2 months overdue and only pays for
@@ -1951,7 +1931,6 @@
       c.monthsPaid = months;
       c.periodFrom = periodFrom;
       c.periodTo = periodTo;
-      c.lastBillingNote = document.getElementById("modeNotes").value.trim();
       c.paidRecordedOn = datePaid;
       c.lastPaymentSnapshot = snapshot;
       c.updatedAt = Date.now();
