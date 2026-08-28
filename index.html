@@ -222,6 +222,9 @@
   
   @media (max-width:560px){
     .row2{grid-template-columns:1fr;}
+    .row2-tight{grid-template-columns:1fr 1fr !important;gap:6px;}
+    .row2-tight input, .row2-tight select{padding:8px 6px;font-size:13px;}
+    .row2-tight label{font-size:11.5px;}
     .searchbox{min-width:0;flex:1 1 100%;order:-1;width:100%;}
     .searchbox input{min-width:0;}
     header.topbar{padding:10px 12px;}
@@ -261,7 +264,7 @@
     <button class="btn btn-ghost" id="reportBtn">📊 Report</button>
     <button class="btn btn-ghost" id="activityBtn">🕒 <span id="activityBtnLabel">Activity</span></button>
     <button class="btn btn-ghost" id="manualBtn">📖 <span id="manualBtnLabel">Manual</span></button>
-    <button class="btn btn-ghost" id="staffBtn">👤 Staff</button>
+    <button class="btn btn-ghost" id="staffBtn">👤 Area Managers</button>
     <button class="btn btn-ghost" id="settingsBtn">⚙ Shop Details</button>
     <button class="btn btn-ghost" id="exportBtn">⬇ Backup</button>
     <button class="btn btn-ghost" id="importBtn">⬆ Restore</button>
@@ -348,7 +351,7 @@
     </div>
     <div class="row2">
       <div class="field">
-        <label id="lblStb">STB / Box No <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+        <label id="lblStb">STB / Line No <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
         <input id="fStb" type="text" placeholder="e.g. STB00123" />
       </div>
       <div></div>
@@ -524,7 +527,7 @@
     </div>
     <div class="row2">
       <div class="field">
-        <label id="lblModeStb">STB / Box No</label>
+        <label id="lblModeStb">STB / Line No</label>
         <input id="modeStbDisplay" type="text" disabled />
       </div>
       <div class="field">
@@ -532,7 +535,7 @@
         <input id="modeStatusDisplay" type="text" disabled />
       </div>
     </div>
-    <div class="row2">
+    <div class="row2 row2-tight">
       <div class="field">
         <label id="lblModePlanAmount">Plan Amount (₹)</label>
         <input id="modePlanAmountDisplay" type="text" disabled />
@@ -546,14 +549,20 @@
         </select>
       </div>
     </div>
-    <div class="field">
-      <label id="lblModeAmountReceived">Amount Received (₹)</label>
-      <input id="modeAmountReceived" type="number" min="0" />
-      <div class="hint" id="modeMonthsHint"></div>
+    <div class="row2 row2-tight">
+      <div class="field">
+        <label id="lblModeAmountReceived">Amount Received (₹)</label>
+        <input id="modeAmountReceived" type="number" min="0" />
+        <div class="hint" id="modeMonthsHint"></div>
+      </div>
+      <div class="field">
+        <label id="lblModeDatePaid">Date Paid</label>
+        <input id="modeDatePaid" type="date" disabled />
+      </div>
     </div>
     <div class="field">
       <label id="lblModePeriod">For a Period of</label>
-      <div class="row2">
+      <div class="row2 row2-tight">
         <div class="field" style="margin-bottom:0;">
           <label id="lblModeFrom">From</label>
           <input id="modePeriodFrom" type="date" />
@@ -563,10 +572,6 @@
           <input id="modePeriodTo" type="date" />
         </div>
       </div>
-    </div>
-    <div class="field">
-      <label id="lblModeDatePaid">Date Paid</label>
-      <input id="modeDatePaid" type="date" disabled />
     </div>
     <div class="field" id="modeCollectorField">
       <label id="lblModeCollector">Collected By</label>
@@ -592,11 +597,11 @@
       <label id="lblLoginRole">I am</label>
       <select id="loginRoleSelect">
         <option value="office" id="loginRoleOffice">Office (full access)</option>
-        <option value="staff" id="loginRoleStaff">Staff Member</option>
+        <option value="staff" id="loginRoleStaff">Area Manager</option>
       </select>
     </div>
     <div class="field" id="loginStaffPickWrap" style="display:none;">
-      <label id="lblLoginStaff">Staff Name</label>
+      <label id="lblLoginStaff">Area Manager Name</label>
       <select id="loginStaffSelect"></select>
     </div>
     <div class="field">
@@ -610,25 +615,25 @@
   </div>
 </div>
 
-<!-- Manage Staff Modal -->
+<!-- Manage Area Managers Modal -->
 <div class="overlay" id="staffOverlay">
   <div class="modal wide">
     <button class="close-x" data-close="staffOverlay">✕</button>
-    <h2 id="staffTitle">Manage Staff</h2>
-    <div class="sub" id="staffSub">Add staff, set their PIN and which lines they can see</div>
+    <h2 id="staffTitle">Manage Area Managers</h2>
+    <div class="sub" id="staffSub">Add area managers, set their PIN and which lines they can see</div>
     <div id="staffList" style="margin-bottom:14px;"></div>
     <div class="row2">
       <div class="field">
-        <label id="lblNewStaff">Staff Name</label>
+        <label id="lblNewStaff">Area Manager Name</label>
         <input id="newStaffName" type="text" placeholder="e.g. Kumar" />
       </div>
       <div class="field">
-        <label id="lblNewStaffPin">Staff PIN</label>
+        <label id="lblNewStaffPin">Area Manager PIN</label>
         <input id="newStaffPin" type="text" inputmode="numeric" placeholder="e.g. 2580" />
       </div>
     </div>
     <div class="field">
-      <label id="lblNewStaffLines">Lines this staff can access</label>
+      <label id="lblNewStaffLines">Lines this area manager can access</label>
       <div id="newStaffLinesBox" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
     </div>
     <div class="modal-actions">
@@ -840,6 +845,7 @@
   // in attachSyncListener) — lets an up-to-date device detect the moment
   // an outdated device on the same sync room overwrites shared data.
   var SCHEMA_VERSION = 2;
+  var LAST_BACKUP_KEY = "cabletv_billing_last_backup_v1" + STORAGE_SUFFIX;
   var SETTINGS_KEY = "cabletv_billing_settings_v1" + STORAGE_SUFFIX;
   var INVOICE_KEY = "cabletv_billing_invoice_seq_v1" + STORAGE_SUFFIX;
   var CATEGORIES_KEY = "cabletv_billing_categories_v1" + STORAGE_SUFFIX;
@@ -885,8 +891,8 @@
     { code:"M", max:30 }
   ];
   var DEFAULT_STAFF = [
-    { name:"Staff 1", pin:"1111", lines:[] },
-    { name:"Staff 2", pin:"2222", lines:[] }
+    { name:"Area Manager 1", pin:"1111", lines:[] },
+    { name:"Area Manager 2", pin:"2222", lines:[] }
   ];
 
   var I18N = {
@@ -903,31 +909,33 @@
       lblLastPaid:"Last Paid Date", lblDueDate:"Next Due Date", lblStatus:"Payment Status",
       lblSuspendedOn:"Suspended on", suspendedOnHint:"Mark Paid will calculate the new due date from this date, not from today",
       lblMode:"Collection Mode", lblNotes:"Notes (optional)", lblCollector:"Collected By", lblModeCollector:"Collected By", lblModeMonths:"Paid For",
-      lblStb:"STB / Box No (optional)",
+      lblStb:"STB / Line No (optional)",
       lblModeName:"Name", lblModeMobile:"Mobile", lblModePlanAmount:"Plan Amount (₹)", lblModeAmountReceived:"Amount Received (₹)",
       lblModePeriod:"For a Period of", lblModeFrom:"From", lblModeTo:"To", lblModeDatePaid:"Date Paid", lblModeCurrentDate:"Current Date",
-      lblModeStb:"STB / Box No", lblModeStatus:"Status", lblModeLastPayment:"Last Payment (new)", lblModeNextPayment:"Next Payment",
+      lblModeStb:"STB / Line No", lblModeStatus:"Status", lblModeLastPayment:"Last Payment (new)", lblModeNextPayment:"Next Payment",
       lblModeNotes:"Notes (optional)", lblModeMode:"Mode",
-      staffBtn:"👤 Staff", staffTitle:"Manage Staff", staffSub:"Add the names of members who collect payments",
-      lblNewStaff:"New Staff Name", addStaffBtn:"➕ Add Staff", staffExists:"This staff name already exists.",
-      staffAdded:"Staff added successfully.", deleteStaffBtn:"Remove", reportByStaff:"Collected by", collectorOffice:"Office",
+      staffBtn:"👤 Area Managers", staffTitle:"Manage Area Managers", staffSub:"Add the names of members who collect payments",
+      lblNewStaff:"New Area Manager Name", addStaffBtn:"➕ Add Area Manager", staffExists:"This area manager name already exists.",
+      staffAdded:"Area manager added successfully.", deleteStaffBtn:"Remove", reportByStaff:"Collected by", collectorOffice:"Office",
       reportByPackage:"Package-wise", reportUnknownPlan:"No plan set", reportPackSuffix:"pack", reportTxnSuffix:"txn",
       reportCustomersByPlan:"Customers by Plan",
+      backupReminderNever:"You haven't taken a backup yet. Tap ⬇ Backup any time to save a complete copy of your data — worth doing regularly.",
+      backupReminderDays:"It's been {days} days since your last backup. Tap ⬇ Backup to save a fresh copy of your data — it only takes a second.",
       syncBtnLabel:"Cloud Sync", syncTitle:"Cloud Sync", syncSub:"Connect both devices to the same live data",
       lblSyncConfig:"Firebase Config (paste the code from your Firebase project)",
       lblRoomId:"Shop Sync Code (make up any word — both devices must use the SAME code)",
       connectBtn:"Connect", disconnectBtn:"Disconnect",
       syncNotConnected:"Not connected", syncConnected:"Connected — data is live", syncConnecting:"Connecting...",
       syncErrorMsg:"Could not connect. Check your config and internet connection.",
-      syncHelp:"Both staff members must paste the exact same Firebase Config and the exact same Sync Code for their data to match.",
+      syncHelp:"Both devices must paste the exact same Firebase Config and the exact same Sync Code for their data to match.",
       syncInvalidConfig:"Please paste a valid Firebase config (copied from your Firebase project settings).",
       syncNeedRoom:"Please enter a Sync Code.",
-      linesLabel:"Lines", editStaffBtn:"Edit", staffNeedsPin:"Please set a PIN for this staff member.",
-      lblNewStaffPin:"Staff PIN", lblNewStaffLines:"Lines this staff can access",
+      linesLabel:"Lines", editStaffBtn:"Edit", staffNeedsPin:"Please set a PIN for this area manager.",
+      lblNewStaffPin:"Area Manager PIN", lblNewStaffLines:"Lines this area manager can access",
       lblOfficePin:"Office Sign-In PIN",
       loginTitle:"Sign In", loginSub:"Choose who's using this device",
-      lblLoginRole:"I am", loginRoleOffice:"Office (full access)", loginRoleStaff:"Staff Member",
-      lblLoginStaff:"Staff Name", lblLoginPin:"PIN", loginBtn:"Sign In",
+      lblLoginRole:"I am", loginRoleOffice:"Office (full access)", loginRoleStaff:"Area Manager",
+      lblLoginStaff:"Area Manager Name", lblLoginPin:"PIN", loginBtn:"Sign In",
       loginHint:"First time on this device? Office default PIN is 1234 — change it in Shop Details after signing in.",
       loginWrongPin:"Incorrect PIN. Please try again.",
       logoutBtnLabel:"Sign Out", noLinesAssigned:"You don't have any lines assigned yet. Please ask Office to assign you a line.",
@@ -991,31 +999,33 @@
       lblLastPaid:"கடைசியாக செலுத்திய தேதி", lblDueDate:"அடுத்த செலுத்த வேண்டிய தேதி", lblStatus:"கட்டண நிலை",
       lblSuspendedOn:"இடைநிறுத்தப்பட்ட தேதி", suspendedOnHint:"Mark Paid இந்த தேதியிலிருந்து புதிய தேதியை கணக்கிடும், இன்றைய தேதியிலிருந்து அல்ல",
       lblMode:"வசூல் முறை", lblNotes:"குறிப்புகள் (விருப்பம்)", lblCollector:"யார் வசூலித்தார்", lblModeCollector:"யார் வசூலித்தார்", lblModeMonths:"எத்தனை மாதங்களுக்கு செலுத்துகிறார்",
-      lblStb:"STB / பாக்ஸ் எண் (விருப்பம்)",
+      lblStb:"STB / லைன் எண் (விருப்பம்)",
       lblModeName:"பெயர்", lblModeMobile:"மொபைல்", lblModePlanAmount:"திட்ட தொகை (₹)", lblModeAmountReceived:"பெறப்பட்ட தொகை (₹)",
       lblModePeriod:"எந்த காலத்திற்கு", lblModeFrom:"தொடக்கம்", lblModeTo:"முடிவு", lblModeDatePaid:"செலுத்திய தேதி", lblModeCurrentDate:"இன்றைய தேதி",
-      lblModeStb:"STB / பாக்ஸ் எண்", lblModeStatus:"நிலை", lblModeLastPayment:"கடைசி கட்டணம் (புதியது)", lblModeNextPayment:"அடுத்த கட்டணம்",
+      lblModeStb:"STB / லைன் எண்", lblModeStatus:"நிலை", lblModeLastPayment:"கடைசி கட்டணம் (புதியது)", lblModeNextPayment:"அடுத்த கட்டணம்",
       lblModeNotes:"குறிப்புகள் (விருப்பம்)", lblModeMode:"முறை",
-      staffBtn:"👤 ஊழியர்", staffTitle:"ஊழியர்களை நிர்வகி", staffSub:"பணம் வசூலிக்கும் நபர்களின் பெயர்களைச் சேர்க்கவும்",
-      lblNewStaff:"புதிய ஊழியர் பெயர்", addStaffBtn:"➕ ஊழியரைச் சேர்", staffExists:"இந்த பெயர் ஏற்கனவே உள்ளது.",
-      staffAdded:"ஊழியர் வெற்றிகரமாக சேர்க்கப்பட்டார்.", deleteStaffBtn:"நீக்கு", reportByStaff:"வசூலித்தவர்", collectorOffice:"அலுவலகம்",
+      staffBtn:"👤 பகுதி மேலாளர்கள்", staffTitle:"பகுதி மேலாளர்களை நிர்வகி", staffSub:"பணம் வசூலிக்கும் நபர்களின் பெயர்களைச் சேர்க்கவும்",
+      lblNewStaff:"புதிய பகுதி மேலாளர் பெயர்", addStaffBtn:"➕ பகுதி மேலாளரைச் சேர்", staffExists:"இந்த பெயர் ஏற்கனவே உள்ளது.",
+      staffAdded:"பகுதி மேலாளர் வெற்றிகரமாக சேர்க்கப்பட்டார்.", deleteStaffBtn:"நீக்கு", reportByStaff:"வசூலித்தவர்", collectorOffice:"அலுவலகம்",
       reportByPackage:"திட்டம் வாரியாக", reportUnknownPlan:"திட்டம் இல்லை", reportPackSuffix:"திட்டம்", reportTxnSuffix:"பரிவர்த்தனை",
       reportCustomersByPlan:"திட்டம் வாரியாக வாடிக்கையாளர்கள்",
+      backupReminderNever:"நீங்கள் இன்னும் காப்புப்பிரதி எடுக்கவில்லை. உங்கள் தரவின் முழு நகலை சேமிக்க எப்போது வேண்டுமானாலும் ⬇ காப்புப்பிரதி தட்டவும் — தொடர்ந்து செய்வது நல்லது.",
+      backupReminderDays:"உங்கள் கடைசி காப்புப்பிரதி எடுத்து {days} நாட்கள் ஆகின்றன. புதிய நகலை சேமிக்க ⬇ காப்புப்பிரதி தட்டவும் — ஒரு நொடி மட்டுமே ஆகும்.",
       syncBtnLabel:"கிளவுட் சின்க்", syncTitle:"கிளவுட் சின்க்", syncSub:"இரு சாதனங்களையும் ஒரே நேரடி தரவுடன் இணைக்கவும்",
       lblSyncConfig:"Firebase கட்டமைப்பு (உங்கள் Firebase திட்டத்திலிருந்து ஒட்டவும்)",
       lblRoomId:"கடை சின்க் குறியீடு (எந்த வார்த்தையையும் உருவாக்கவும் — இரு சாதனங்களும் ஒரே குறியீட்டைப் பயன்படுத்த வேண்டும்)",
       connectBtn:"இணை", disconnectBtn:"துண்டி",
       syncNotConnected:"இணைக்கப்படவில்லை", syncConnected:"இணைக்கப்பட்டது — தரவு நேரடியாக உள்ளது", syncConnecting:"இணைக்கிறது...",
       syncErrorMsg:"இணைக்க முடியவில்லை. உங்கள் கட்டமைப்பு மற்றும் இணையத்தை சரிபார்க்கவும்.",
-      syncHelp:"இரு ஊழியர்களும் ஒரே Firebase கட்டமைப்பு மற்றும் ஒரே சின்க் குறியீட்டை பயன்படுத்த வேண்டும்.",
+      syncHelp:"இரு சாதனங்களும் ஒரே Firebase கட்டமைப்பு மற்றும் ஒரே சின்க் குறியீட்டை பயன்படுத்த வேண்டும்.",
       syncInvalidConfig:"சரியான Firebase கட்டமைப்பை ஒட்டவும்.",
       syncNeedRoom:"சின்க் குறியீட்டை உள்ளிடவும்.",
-      linesLabel:"வரிசைகள்", editStaffBtn:"திருத்து", staffNeedsPin:"இந்த ஊழியருக்கு PIN அமைக்கவும்.",
-      lblNewStaffPin:"ஊழியர் PIN", lblNewStaffLines:"இந்த ஊழியர் அணுகக்கூடிய வரிசைகள்",
+      linesLabel:"வரிசைகள்", editStaffBtn:"திருத்து", staffNeedsPin:"இந்த பகுதி மேலாளருக்கு PIN அமைக்கவும்.",
+      lblNewStaffPin:"பகுதி மேலாளர் PIN", lblNewStaffLines:"இந்த பகுதி மேலாளர் அணுகக்கூடிய வரிசைகள்",
       lblOfficePin:"அலுவலக உள்நுழைவு PIN",
       loginTitle:"உள்நுழையவும்", loginSub:"இந்த சாதனத்தை பயன்படுத்துபவரைத் தேர்ந்தெடுக்கவும்",
-      lblLoginRole:"நான்", loginRoleOffice:"அலுவலகம் (முழு அணுகல்)", loginRoleStaff:"ஊழியர்",
-      lblLoginStaff:"ஊழியர் பெயர்", lblLoginPin:"PIN", loginBtn:"உள்நுழை",
+      lblLoginRole:"நான்", loginRoleOffice:"அலுவலகம் (முழு அணுகல்)", loginRoleStaff:"பகுதி மேலாளர்",
+      lblLoginStaff:"பகுதி மேலாளர் பெயர்", lblLoginPin:"PIN", loginBtn:"உள்நுழை",
       loginHint:"முதல் முறையா? அலுவலக இயல்பு PIN 1234 — உள்நுழைந்த பிறகு கடை விவரங்களில் மாற்றவும்.",
       loginWrongPin:"தவறான PIN. மீண்டும் முயற்சிக்கவும்.",
       logoutBtnLabel:"வெளியேறு", noLinesAssigned:"உங்களுக்கு இன்னும் வரிசைகள் ஒதுக்கப்படவில்லை. அலுவலகத்தை கேட்கவும்.",
@@ -1074,8 +1084,8 @@
   ];
   var MANUAL_PAGES = [
     { icon:"🔑", tEn:"Signing In", tTa:"உள்நுழைவது",
-      xEn:"Office signs in with the Office PIN (default 1234, change it in Shop Details) and can see and do everything. Staff sign in with their own name and PIN, and only see the lines (A, B, U, etc.) assigned to them.",
-      xTa:"ஆஃபீஸ் தன் PIN-ஐ பயன்படுத்தி உள்நுழையலாம் (இயல்பு 1234, கடை விவரங்களில் மாற்றலாம்) — எல்லாவற்றையும் பார்க்க/செய்ய முடியும். ஊழியர்கள் தங்கள் பெயர் மற்றும் PIN மூலம் உள்நுழைந்து, தங்களுக்கு ஒதுக்கப்பட்ட வரிசைகளை (A, B, U போன்றவை) மட்டுமே பார்க்க முடியும்." },
+      xEn:"Office signs in with the Office PIN (default 1234, change it in Shop Details) and can see and do everything. Area Managers sign in with their own name and PIN, and only see the lines (A, B, U, etc.) assigned to them.",
+      xTa:"ஆஃபீஸ் தன் PIN-ஐ பயன்படுத்தி உள்நுழையலாம் (இயல்பு 1234, கடை விவரங்களில் மாற்றலாம்) — எல்லாவற்றையும் பார்க்க/செய்ய முடியும். பகுதி மேலாளர்கள் தங்கள் பெயர் மற்றும் PIN மூலம் உள்நுழைந்து, தங்களுக்கு ஒதுக்கப்பட்ட வரிசைகளை (A, B, U போன்றவை) மட்டுமே பார்க்க முடியும்." },
     { icon:"➕", tEn:"Adding a Customer", tTa:"வாடிக்கையாளரைச் சேர்ப்பது",
       xEn:"Tap any empty grey box (marked +) to add a customer there. Fill in their name, mobile number, plan amount, and payment status, then Save Customer.",
       xTa:"காலியான சாம்பல் நிற பாக்ஸை (+ குறியுடன்) தட்டி புதிய வாடிக்கையாளரைச் சேர்க்கவும். பெயர், மொபைல் எண், திட்ட தொகை, கட்டண நிலை பூர்த்தி செய்து Save Customer தட்டவும்." },
@@ -1094,9 +1104,9 @@
     { icon:"🕒", tEn:"Activity Log", tTa:"செயல்பாட்டு பதிவு",
       xEn:"Tap 🕒 Activity to see a full history of every add, edit, removal, and payment made in the app, with who did it and when.",
       xTa:"🕒 Activity தட்டி இந்த ஆப்பில் நடந்த ஒவ்வொரு சேர்த்தல், திருத்தம், நீக்கம், கட்டணம் ஆகியவற்றின் முழு பதிவையும் — யார், எப்போது செய்தார் என்பதுடன் காணலாம்." },
-    { icon:"👤", tEn:"Managing Staff", tTa:"ஊழியர்களை நிர்வகிப்பது",
-      xEn:"(Office only) Tap 👤 Staff to add staff members, set their PIN, and choose which lines each one can see and bill.",
-      xTa:"(ஆஃபீஸ் மட்டும்) 👤 Staff தட்டி ஊழியர்களைச் சேர்த்து, PIN அமைத்து, அவர்கள் பார்க்கக்கூடிய வரிசைகளை தேர்ந்தெடுக்கலாம்." },
+    { icon:"👤", tEn:"Managing Area Managers", tTa:"பகுதி மேலாளர்களை நிர்வகிப்பது",
+      xEn:"(Office only) Tap 👤 Area Managers to add area managers, set their PIN, and choose which lines each one can see and bill.",
+      xTa:"(ஆஃபீஸ் மட்டும்) 👤 பகுதி மேலாளர்கள் தட்டி பகுதி மேலாளர்களைச் சேர்த்து, PIN அமைத்து, அவர்கள் பார்க்கக்கூடிய வரிசைகளை தேர்ந்தெடுக்கலாம்." },
     { icon:"🗂️", tEn:"Managing Lines", tTa:"வரிசைகளை நிர்வகிப்பது",
       xEn:"(Office only) Tap the ➕ next to your line tabs to add a new line (like a new B or C series) or change how many customer slots a line has.",
       xTa:"(ஆஃபீஸ் மட்டும்) வரிசை tab-களுக்கு அருகில் உள்ள ➕ தட்டி புதிய வரிசை (B, C போன்றவை) சேர்க்கலாம் அல்லது எண்ணிக்கையை மாற்றலாம்." },
@@ -1856,15 +1866,10 @@
     document.getElementById("modePlanAmountDisplay").value = fmtMoney(c.amount);
     var sel = document.getElementById("modeCollectorSelect");
     var field = document.getElementById("modeCollectorField");
+    field.style.display = "none";
     if(state.session && state.session.role === "staff"){
       sel.value = state.session.staffName;
-      field.style.display = "none";
     }else{
-      // Office is doing this billing right now — default to "Office", not
-      // whoever collected this customer's last payment. Office can still
-      // change the dropdown if they're recording a payment a staff member
-      // physically collected, but it should never be silently pre-filled.
-      field.style.display = "";
       sel.value = "Office";
     }
     document.getElementById("modeMonthsSelect").value = "1";
@@ -1889,7 +1894,7 @@
       var id = modePopupTargetId;
       if(!id || !state.data[id]) { hideOverlay("modeOverlay"); return; }
       var c = state.data[id];
-      var collector = (state.session && state.session.role === "staff") ? state.session.staffName : document.getElementById("modeCollectorSelect").value;
+      var collector = (state.session && state.session.role === "staff") ? state.session.staffName : "Office";
       var months = Number(document.getElementById("modeMonthsSelect").value) || 1;
       var collectedAmt = Number(document.getElementById("modeAmountReceived").value) || 0;
 
@@ -2188,8 +2193,7 @@
       "</div>" +
       "<div class='receipt-row'><span class='k'>No</span><span class='v'>"+invoiceNo+"</span></div>" +
       "<div class='receipt-row'><span class='k'>Date</span><span class='v'>"+date+"</span></div>" +
-      "<div class='receipt-row'><span class='k'>Box No</span><span class='v'>"+id+(c.stb ? " ("+escapeHtml(c.stb)+")" : "")+"</span></div>" +
-      "<div class='receipt-row'><span class='k'>Name</span><span class='v'>"+escapeHtml(c.name||"")+"</span></div>" +
+      "<div class='receipt-row'><span class='k'>Line No / Name</span><span class='v'>"+id+(c.stb ? " ("+escapeHtml(c.stb)+")" : "")+" · "+escapeHtml(c.name||"")+"</span></div>" +
       "<div class='receipt-row'><span class='k'>Status</span><span class='v'><span class='badge "+c.status+"'>"+c.status.toUpperCase()+"</span></span></div>" +
       (c.status === "paid" && c.mode ? "<div class='receipt-row'><span class='k'>Paid Via</span><span class='v'>"+escapeHtml((c.mode||"").toUpperCase())+"</span></div>" : "") +
       (c.status === "paid" && c.collector ? "<div class='receipt-row'><span class='k'>Collected By</span><span class='v'>"+escapeHtml(c.collector)+"</span></div>" : "") +
@@ -2401,10 +2405,37 @@
   });
 
   // ---------- Backup / Restore ----------
+  // A gentle nudge, not an automatic download — safer than silently
+  // triggering a file save on login (which browsers can block or people
+  // can find surprising). Only ever runs right after Office signs in.
+  function maybeShowBackupReminder(){
+    if(!isOffice()) return;
+    var last = localStorage.getItem(LAST_BACKUP_KEY);
+    var daysSince = last ? Math.floor((Date.now() - new Date(last + "T00:00:00").getTime()) / (24*60*60*1000)) : null;
+    if(daysSince === null){
+      alert(t("backupReminderNever"));
+    }else if(daysSince >= 7){
+      alert(t("backupReminderDays").replace("{days}", daysSince));
+    }
+  }
+
   document.getElementById("exportBtn").addEventListener("click", function(){
-    var payload = { data: state.data, settings: state.settings, categories: state.categories, staff: state.staff, activityLog: state.activityLog, exportedAt: new Date().toISOString() };
+    var scopedData = state.data;
+    var scopedActivity = state.activityLog;
+    var scopedStaff = state.staff;
+    if(!isOffice()){
+      // A staff/area-manager backup should only ever contain what that
+      // person can already see in the app — their own assigned line(s) —
+      // never the whole business's customer list or other staff's data.
+      scopedData = {};
+      Object.keys(state.data).forEach(function(id){ if(isBoxVisible(id)) scopedData[id] = state.data[id]; });
+      scopedActivity = state.activityLog.filter(function(e){ return isBoxVisible(e.box); });
+      scopedStaff = [];
+    }
+    var payload = { data: scopedData, settings: state.settings, categories: state.categories, staff: scopedStaff, activityLog: scopedActivity, exportedAt: new Date().toISOString() };
     var jsonStr = JSON.stringify(payload, null, 2);
     var filename = "cable-billing-backup-" + todayStr() + ".json";
+    if(isOffice()){ localStorage.setItem(LAST_BACKUP_KEY, todayStr()); }
     // On browsers that support it (mainly desktop Chrome/Edge), let the
     // person pick exactly where to save. Everywhere else (most Android
     // phones included), fall back to a normal download — which already
@@ -3745,7 +3776,7 @@
 
   // ---------- Login / Access Control ----------
   function applyRoleUI(){
-    var officeOnly = ["staffBtn","settingsBtn","exportBtn","importBtn"];
+    var officeOnly = ["staffBtn","settingsBtn","importBtn"];
     officeOnly.forEach(function(id){
       document.getElementById(id).style.display = isOffice() ? "" : "none";
     });
@@ -3797,6 +3828,7 @@
     if(vc.length && !vc.some(function(c){ return c.code === state.activeCat; })){ state.activeCat = vc[0].code; }
     if(!isOffice() && !vc.length){ alert(t("noLinesAssigned")); }
     renderAll();
+    maybeShowBackupReminder();
   });
 
   document.getElementById("logoutBtn").addEventListener("click", function(){
