@@ -191,6 +191,24 @@
 
   .report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:18px;}
   .pie-wrap{display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:center;margin-bottom:8px;}
+
+  .report-pages-wrap{position:relative;min-height:120px;}
+  .report-page{width:100%;}
+  .report-page.hidden{display:none;}
+  .report-page.page-turn-out{animation:pageTurnOut .38s ease forwards;transform-origin:right center;backface-visibility:hidden;}
+  .report-page.page-turn-in{animation:pageTurnIn .38s ease forwards;transform-origin:left center;backface-visibility:hidden;}
+  .report-page.page-turn-out-rev{animation:pageTurnOutRev .38s ease forwards;transform-origin:left center;backface-visibility:hidden;}
+  .report-page.page-turn-in-rev{animation:pageTurnInRev .38s ease forwards;transform-origin:right center;backface-visibility:hidden;}
+  @keyframes pageTurnOut{0%{transform:perspective(1000px) rotateY(0deg);opacity:1;box-shadow:none;}100%{transform:perspective(1000px) rotateY(-100deg);opacity:0;box-shadow:-14px 0 26px rgba(0,0,0,.25);}}
+  @keyframes pageTurnIn{0%{transform:perspective(1000px) rotateY(100deg);opacity:0;}100%{transform:perspective(1000px) rotateY(0deg);opacity:1;}}
+  @keyframes pageTurnOutRev{0%{transform:perspective(1000px) rotateY(0deg);opacity:1;box-shadow:none;}100%{transform:perspective(1000px) rotateY(100deg);opacity:0;box-shadow:14px 0 26px rgba(0,0,0,.25);}}
+  @keyframes pageTurnInRev{0%{transform:perspective(1000px) rotateY(-100deg);opacity:0;}100%{transform:perspective(1000px) rotateY(0deg);opacity:1;}}
+  .report-page-nav{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:14px;}
+  .page-nav-btn{background:var(--navy);color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .page-nav-btn:disabled{opacity:.3;cursor:default;}
+  .page-dots{display:flex;gap:8px;}
+  .page-dots .dot{width:8px;height:8px;border-radius:50%;background:#d6dbe1;cursor:pointer;transition:background .2s;}
+  .page-dots .dot.active{background:var(--navy);}
   .pie-legend{display:flex;flex-direction:column;gap:8px;}
   .pie-legend-item{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:5px 8px;border-radius:6px;}
   .pie-legend-item:hover{background:#f2f5f8;}
@@ -672,70 +690,90 @@
     <h2 id="reportTitleH">Collection Report</h2>
     <div class="sub" id="reportSub">Based on current status of all customers</div>
 
-    <div class="row2" style="margin-bottom:10px;">
-      <div class="field" style="margin-bottom:0;">
-        <label id="lblReportFrom">From</label>
-        <input id="reportDateFrom" type="date" />
+    <div class="report-pages-wrap" id="reportPagesWrap">
+      <div class="report-page" id="reportPage1">
+        <div class="row2 row2-tight" style="margin-bottom:10px;">
+          <div class="field" style="margin-bottom:0;">
+            <label id="lblReportFrom">From</label>
+            <input id="reportDateFrom" type="date" />
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label id="lblReportTo">To</label>
+            <input id="reportDateTo" type="date" />
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+          <button class="btn btn-outline btn-sm" id="reportClearBtn">Show All</button>
+          <button class="btn btn-outline btn-sm" id="reportTodayBtn">Today</button>
+          <button class="btn btn-outline btn-sm" id="reportLast7Btn">Last 7 Days</button>
+          <button class="btn btn-outline btn-sm" id="reportLast15Btn">Last 15 Days</button>
+          <button class="btn btn-outline btn-sm" id="reportThisMonthBtn">This Month</button>
+        </div>
+
+        <div class="field" style="margin-bottom:10px;">
+          <label id="lblReportMode">Mode</label>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;" id="reportModeFilterRow"></div>
+        </div>
+        <div class="field" style="margin-bottom:14px;">
+          <label id="lblReportCollector">Collected By</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;" id="reportCollectorFilterRow"></div>
+        </div>
+
+        <div class="report-grid" id="reportGrid"></div>
+
+        <div class="pie-wrap">
+          <svg id="pieSvg" width="180" height="180" viewBox="0 0 180 180"></svg>
+          <div class="pie-legend" id="pieLegend"></div>
+        </div>
       </div>
-      <div class="field" style="margin-bottom:0;">
-        <label id="lblReportTo">To</label>
-        <input id="reportDateTo" type="date" />
+
+      <div class="report-page hidden" id="reportPage2">
+        <div id="reportPackageSection"></div>
+
+        <div style="margin-top:14px;">
+          <div style="font-weight:700;margin-bottom:6px;" id="planPieTitle">Customers by Plan</div>
+          <div class="pie-wrap">
+            <svg id="planPieSvg" width="180" height="180" viewBox="0 0 180 180"></svg>
+            <div class="pie-legend" id="planPieLegend"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="report-page hidden" id="reportPage3">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <h3 id="reportDetailTitle" style="margin:0;">Collection Details</h3>
+          <button class="btn btn-outline btn-sm" id="reportDownloadBtn">⬇ Download CSV</button>
+        </div>
+        <div style="max-height:260px;overflow-y:auto;border:1px solid #e2e2e2;border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:13px;" id="reportDetailTable">
+            <thead>
+              <tr style="background:#f5f5f5;text-align:left;">
+                <th style="padding:6px 8px;">Name</th>
+                <th style="padding:6px 8px;">Box</th>
+                <th style="padding:6px 8px;">Date</th>
+                <th style="padding:6px 8px;">Time</th>
+                <th style="padding:6px 8px;">Mode</th>
+                <th style="padding:6px 8px;">Collected By</th>
+                <th style="padding:6px 8px;text-align:right;">Amount</th>
+                <th style="padding:6px 8px;" id="reportActionCol"></th>
+              </tr>
+            </thead>
+            <tbody id="reportDetailBody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
-      <button class="btn btn-outline btn-sm" id="reportClearBtn">Show All</button>
-      <button class="btn btn-outline btn-sm" id="reportTodayBtn">Today</button>
-      <button class="btn btn-outline btn-sm" id="reportLast7Btn">Last 7 Days</button>
-      <button class="btn btn-outline btn-sm" id="reportLast15Btn">Last 15 Days</button>
-      <button class="btn btn-outline btn-sm" id="reportThisMonthBtn">This Month</button>
-    </div>
 
-    <div class="field" style="margin-bottom:10px;">
-      <label id="lblReportMode">Mode</label>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="reportModeFilterRow"></div>
-    </div>
-    <div class="field" style="margin-bottom:14px;">
-      <label id="lblReportCollector">Collected By</label>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;" id="reportCollectorFilterRow"></div>
-    </div>
-
-    <div class="report-grid" id="reportGrid"></div>
-    <div id="reportPackageSection"></div>
-
-    <div class="pie-wrap">
-      <svg id="pieSvg" width="180" height="180" viewBox="0 0 180 180"></svg>
-      <div class="pie-legend" id="pieLegend"></div>
-    </div>
-
-    <div style="margin-top:14px;">
-      <div style="font-weight:700;margin-bottom:6px;" id="planPieTitle">Customers by Plan</div>
-      <div class="pie-wrap">
-        <svg id="planPieSvg" width="180" height="180" viewBox="0 0 180 180"></svg>
-        <div class="pie-legend" id="planPieLegend"></div>
+    <div class="report-page-nav">
+      <button class="page-nav-btn" id="reportPrevBtn" aria-label="Previous page">◀</button>
+      <div class="page-dots" id="reportPageDots">
+        <span class="dot active" data-page="1"></span>
+        <span class="dot" data-page="2"></span>
+        <span class="dot" data-page="3"></span>
       </div>
+      <button class="page-nav-btn" id="reportNextBtn" aria-label="Next page">▶</button>
     </div>
-
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;margin-bottom:8px;">
-      <h3 id="reportDetailTitle" style="margin:0;">Collection Details</h3>
-      <button class="btn btn-outline btn-sm" id="reportDownloadBtn">⬇ Download CSV</button>
-    </div>
-    <div style="max-height:260px;overflow-y:auto;border:1px solid #e2e2e2;border-radius:8px;">
-      <table style="width:100%;border-collapse:collapse;font-size:13px;" id="reportDetailTable">
-        <thead>
-          <tr style="background:#f5f5f5;text-align:left;">
-            <th style="padding:6px 8px;">Name</th>
-            <th style="padding:6px 8px;">Box</th>
-            <th style="padding:6px 8px;">Date</th>
-            <th style="padding:6px 8px;">Time</th>
-            <th style="padding:6px 8px;">Mode</th>
-            <th style="padding:6px 8px;">Collected By</th>
-            <th style="padding:6px 8px;text-align:right;">Amount</th>
-            <th style="padding:6px 8px;" id="reportActionCol"></th>
-          </tr>
-        </thead>
-        <tbody id="reportDetailBody"></tbody>
-      </table>
-    </div>
+    <button class="btn btn-outline" id="reportExitBtn" style="width:100%;margin-top:10px;">✕ Exit</button>
   </div>
 </div>
 
@@ -3216,6 +3254,53 @@
     });
   }
 
+  // ---------- Report pages (Summary / Packages / Details) ----------
+  var REPORT_PAGE_COUNT = 3;
+  var reportCurrentPage = 1;
+
+  function resetReportPages(){
+    for(var i=1; i<=REPORT_PAGE_COUNT; i++){
+      var el = document.getElementById("reportPage"+i);
+      el.className = "report-page" + (i === 1 ? "" : " hidden");
+    }
+    reportCurrentPage = 1;
+    updateReportPageNav();
+  }
+
+  function updateReportPageNav(){
+    document.getElementById("reportPrevBtn").disabled = (reportCurrentPage === 1);
+    document.getElementById("reportNextBtn").disabled = (reportCurrentPage === REPORT_PAGE_COUNT);
+    document.querySelectorAll("#reportPageDots .dot").forEach(function(d){
+      d.classList.toggle("active", Number(d.getAttribute("data-page")) === reportCurrentPage);
+    });
+  }
+
+  function reportGoToPage(targetPage){
+    if(targetPage < 1 || targetPage > REPORT_PAGE_COUNT || targetPage === reportCurrentPage) return;
+    var forward = targetPage > reportCurrentPage;
+    var curEl = document.getElementById("reportPage" + reportCurrentPage);
+    var nextEl = document.getElementById("reportPage" + targetPage);
+    var outClass = forward ? "page-turn-out" : "page-turn-out-rev";
+    var inClass = forward ? "page-turn-in" : "page-turn-in-rev";
+    curEl.classList.add(outClass);
+    setTimeout(function(){
+      curEl.classList.remove(outClass);
+      curEl.classList.add("hidden");
+      nextEl.classList.remove("hidden");
+      nextEl.classList.add(inClass);
+      setTimeout(function(){ nextEl.classList.remove(inClass); }, 400);
+    }, 380);
+    reportCurrentPage = targetPage;
+    updateReportPageNav();
+  }
+
+  document.getElementById("reportPrevBtn").addEventListener("click", function(){ reportGoToPage(reportCurrentPage - 1); });
+  document.getElementById("reportNextBtn").addEventListener("click", function(){ reportGoToPage(reportCurrentPage + 1); });
+  document.querySelectorAll("#reportPageDots .dot").forEach(function(d){
+    d.addEventListener("click", function(){ reportGoToPage(Number(d.getAttribute("data-page"))); });
+  });
+  document.getElementById("reportExitBtn").addEventListener("click", function(){ hideOverlay("reportOverlay"); });
+
   function renderReport(){
     var fromDate = document.getElementById("reportDateFrom").value;
     var toDate = document.getElementById("reportDateTo").value;
@@ -3448,6 +3533,7 @@
     document.getElementById("reportDateFrom").value = "";
     document.getElementById("reportDateTo").value = "";
     renderReport();
+    resetReportPages();
     showOverlay("reportOverlay");
   });
   document.getElementById("reportDateFrom").addEventListener("change", renderReport);
