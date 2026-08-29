@@ -210,6 +210,7 @@
   .page-dots .dot{width:8px;height:8px;border-radius:50%;background:#d6dbe1;cursor:pointer;transition:background .2s;}
   .page-dots .dot.active{background:var(--navy);}
   .pie-legend{display:flex;flex-direction:column;gap:8px;}
+  .pie-legend-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:4px 8px;width:100%;}
   .pie-legend-item{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:5px 8px;border-radius:6px;}
   .pie-legend-item:hover{background:#f2f5f8;}
   .pie-legend-item i{width:13px;height:13px;border-radius:3px;flex:none;}
@@ -690,6 +691,16 @@
     <h2 id="reportTitleH">Collection Report</h2>
     <div class="sub" id="reportSub">Based on current status of all customers</div>
 
+    <div class="report-page-nav">
+      <button class="page-nav-btn" id="reportPrevBtn" aria-label="Previous page">◀</button>
+      <div class="page-dots" id="reportPageDots">
+        <span class="dot active" data-page="1"></span>
+        <span class="dot" data-page="2"></span>
+        <span class="dot" data-page="3"></span>
+      </div>
+      <button class="page-nav-btn" id="reportNextBtn" aria-label="Next page">▶</button>
+    </div>
+
     <div class="report-pages-wrap" id="reportPagesWrap">
       <div class="report-page" id="reportPage1">
         <div class="row2 row2-tight" style="margin-bottom:10px;">
@@ -734,7 +745,7 @@
           <div style="font-weight:700;margin-bottom:6px;" id="planPieTitle">Customers by Plan</div>
           <div class="pie-wrap">
             <svg id="planPieSvg" width="180" height="180" viewBox="0 0 180 180"></svg>
-            <div class="pie-legend" id="planPieLegend"></div>
+            <div class="pie-legend pie-legend-grid" id="planPieLegend"></div>
           </div>
         </div>
       </div>
@@ -764,16 +775,7 @@
       </div>
     </div>
 
-    <div class="report-page-nav">
-      <button class="page-nav-btn" id="reportPrevBtn" aria-label="Previous page">◀</button>
-      <div class="page-dots" id="reportPageDots">
-        <span class="dot active" data-page="1"></span>
-        <span class="dot" data-page="2"></span>
-        <span class="dot" data-page="3"></span>
-      </div>
-      <button class="page-nav-btn" id="reportNextBtn" aria-label="Next page">▶</button>
-    </div>
-    <button class="btn btn-outline" id="reportExitBtn" style="width:100%;margin-top:10px;">✕ Exit</button>
+    <button class="btn btn-outline" id="reportExitBtn" style="width:100%;margin-top:14px;">✕ Exit</button>
   </div>
 </div>
 
