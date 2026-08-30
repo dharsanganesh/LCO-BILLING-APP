@@ -385,19 +385,6 @@
       </div>
       <div class="hint" id="statusPickerHint" style="margin-top:4px;">For a normal payment collected today, use "Mark Paid" on the box instead — it records the correct amount, date and collector automatically. Use "Paid" here only to manually correct a customer's status and dates without logging a new collection.</div>
     </div>
-    <div class="row2">
-      <div class="field">
-        <label id="lblMode">Collection Mode</label>
-        <select id="fMode">
-          <option value="cash" id="modeCashOpt">Cash</option>
-          <option value="upi" id="modeUpiOpt">UPI</option>
-        </select>
-      </div>
-      <div class="field" id="fCollectorField">
-        <label id="lblCollector">Collected By</label>
-        <select id="fCollector"></select>
-      </div>
-    </div>
     <div class="field">
       <label id="lblNotes">Notes (optional)</label>
       <textarea id="fNotes" rows="2" placeholder="Address, connection notes, etc."></textarea>
@@ -410,7 +397,6 @@
 
     <div class="modal-actions">
       <button class="btn btn-outline" id="deleteCustBtn">🗑 Remove</button>
-      <button class="btn btn-accent" id="billFromModalBtn" style="display:none;">🧾 Generate Bill</button>
       <button class="btn btn-accent" id="saveCustBtn">Save Customer</button>
     </div>
   </div>
@@ -945,6 +931,8 @@
       statTotal:"Total Customers", statPaid:"Paid", statUnpaid:"Unpaid", statSuspended:"Suspended",
       statCollected:"Collected", statPending:"Pending",
       addTitle:"Add Customer", editTitle:"Edit Customer", boxLabel:"Box",
+      resultLabel:"Result", ofLabel:"of", navPrevResult:"Previous search result", navNextResult:"Next search result",
+      navPrevBox:"Previous box", navNextBox:"Next box",
       lblName:"Customer Name", lblMobile:"Mobile Number (optional)", lblAmount:"Plan Amount (₹)",
       lblLastPaid:"Last Paid Date", lblDueDate:"Next Due Date", lblStatus:"Payment Status",
       lblSuspendedOn:"Suspended on", suspendedOnHint:"Mark Paid will calculate the new due date from this date, not from today",
@@ -1035,6 +1023,8 @@
       statTotal:"மொத்த வாடிக்கையாளர்கள்", statPaid:"செலுத்தியவர்", statUnpaid:"செலுத்தாதவர்", statSuspended:"இடைநிறுத்தம்",
       statCollected:"வசூலானது", statPending:"நிலுவை",
       addTitle:"வாடிக்கையாளரைச் சேர்", editTitle:"வாடிக்கையாளரைத் திருத்து", boxLabel:"பாக்ஸ்",
+      resultLabel:"முடிவு", ofLabel:"/", navPrevResult:"முந்தைய தேடல் முடிவு", navNextResult:"அடுத்த தேடல் முடிவு",
+      navPrevBox:"முந்தைய பாக்ஸ்", navNextBox:"அடுத்த பாக்ஸ்",
       lblName:"வாடிக்கையாளர் பெயர்", lblMobile:"மொபைல் எண் (விருப்பம்)", lblAmount:"திட்ட தொகை (₹)",
       lblLastPaid:"கடைசியாக செலுத்திய தேதி", lblDueDate:"அடுத்த செலுத்த வேண்டிய தேதி", lblStatus:"கட்டண நிலை",
       lblSuspendedOn:"இடைநிறுத்தப்பட்ட தேதி", suspendedOnHint:"Mark Paid இந்த தேதியிலிருந்து புதிய தேதியை கணக்கிடும், இன்றைய தேதியிலிருந்து அல்ல",
@@ -1371,8 +1361,6 @@
     document.getElementById("lblLastPaid").textContent = t("lblLastPaid");
     document.getElementById("lblDueDate").textContent = t("lblDueDate");
     document.getElementById("lblStatus").textContent = t("lblStatus");
-    document.getElementById("lblMode").textContent = t("lblMode");
-    document.getElementById("lblCollector").textContent = t("lblCollector");
     document.getElementById("lblModeCollector").textContent = t("lblModeCollector");
     document.getElementById("lblModeMonths").textContent = t("lblModeMonths");
     document.getElementById("lblStb").textContent = t("lblStb");
@@ -1435,10 +1423,7 @@
     document.getElementById("optUnpaid").textContent = t("optUnpaid");
     document.getElementById("optSuspended").textContent = t("optSuspended");
     document.getElementById("statusPickerHint").textContent = t("statusPickerHint");
-    document.getElementById("modeCashOpt").textContent = t("modeCash");
-    document.getElementById("modeUpiOpt").textContent = t("modeUpi");
     document.getElementById("deleteCustBtn").textContent = t("removeBtn");
-    document.getElementById("billFromModalBtn").textContent = t("billBtn");
     document.getElementById("saveCustBtn").textContent = t("saveCustomerBtn");
     document.getElementById("receiptTitle").textContent = t("receiptTitle");
     document.getElementById("receiptSub").textContent = t("receiptSub");
@@ -1567,7 +1552,7 @@
   });
 
   function populateStaffDropdowns(){
-    var selects = [document.getElementById("fCollector"), document.getElementById("modeCollectorSelect")];
+    var selects = [document.getElementById("modeCollectorSelect")];
     selects.forEach(function(sel){
       var current = sel.value;
       sel.innerHTML = "";
@@ -1837,7 +1822,7 @@
     if(!c){
       box.className = "box empty";
       box.innerHTML = "<div class='plus'>+</div><div class='boxno'>"+id+"</div>";
-      box.addEventListener("click", function(){ openCustomerModal(id, null); });
+      box.addEventListener("click", function(){ searchNavList = null; openCustomerModal(id, null); });
       return box;
     }
     box.className = "box status-" + c.status;
@@ -1853,12 +1838,12 @@
         "<button data-act='edit'>"+t("quickEdit")+"</button>" +
         cancelBtnHtml +
       "</div></div>";
-    box.querySelector("[data-act='edit']").addEventListener("click", function(ev){ ev.stopPropagation(); openCustomerModal(id, c); });
+    box.querySelector("[data-act='edit']").addEventListener("click", function(ev){ ev.stopPropagation(); searchNavList = null; openCustomerModal(id, c); });
     box.querySelector("[data-act='bill']").addEventListener("click", function(ev){ ev.stopPropagation(); openReceipt(id, c); });
     box.querySelector("[data-act='paid']").addEventListener("click", function(ev){ ev.stopPropagation(); openModePopup(id); });
     var cancelBtn = box.querySelector("[data-act='cancelpay']");
     if(cancelBtn) cancelBtn.addEventListener("click", function(ev){ ev.stopPropagation(); cancelLastPayment(id); });
-    box.addEventListener("click", function(){ openCustomerModal(id, c); });
+    box.addEventListener("click", function(){ searchNavList = null; openCustomerModal(id, c); });
     return box;
   }
 
@@ -2024,6 +2009,13 @@
 
   // ---------- Customer Modal ----------
   var pendingStatus = "unpaid";
+  // When a customer is opened by tapping a search result, the ◀▶ arrows in
+  // this modal should page through that same search result list — not the
+  // adjacent box numbers on the line. Cleared whenever a customer is opened
+  // any other way (tapping a box tile directly), so navigation falls back
+  // to normal sequential box browsing.
+  var searchNavList = null;
+  var searchNavIndex = -1;
   function renderCustHistory(id, hasCustomer){
     var wrap = document.getElementById("custHistoryField");
     var list = document.getElementById("custHistoryList");
@@ -2058,10 +2050,37 @@
   function updateCustNavButtons(id){
     var prevBtn = document.getElementById("custPrevBtn");
     var nextBtn = document.getElementById("custNextBtn");
+
+    if(searchNavList && searchNavList.indexOf(id) !== -1){
+      searchNavIndex = searchNavList.indexOf(id);
+      prevBtn.style.display = ""; nextBtn.style.display = "";
+      prevBtn.title = t("navPrevResult"); nextBtn.title = t("navNextResult");
+      prevBtn.disabled = searchNavIndex <= 0;
+      prevBtn.style.opacity = prevBtn.disabled ? "0.4" : "1";
+      prevBtn.onclick = function(){
+        if(searchNavIndex > 0){
+          searchNavIndex--;
+          var prevId = searchNavList[searchNavIndex];
+          openCustomerModal(prevId, state.data[prevId] || null);
+        }
+      };
+      nextBtn.disabled = searchNavIndex >= searchNavList.length - 1;
+      nextBtn.style.opacity = nextBtn.disabled ? "0.4" : "1";
+      nextBtn.onclick = function(){
+        if(searchNavIndex < searchNavList.length - 1){
+          searchNavIndex++;
+          var nextId = searchNavList[searchNavIndex];
+          openCustomerModal(nextId, state.data[nextId] || null);
+        }
+      };
+      return;
+    }
+
     var code = categoryCodeOfId(id);
     var cat = code ? state.categories.filter(function(c){ return c.code === code; })[0] : null;
     if(!cat){ prevBtn.style.display = "none"; nextBtn.style.display = "none"; return; }
     prevBtn.style.display = ""; nextBtn.style.display = "";
+    prevBtn.title = t("navPrevBox"); nextBtn.title = t("navNextBox");
     var num = parseInt(id.slice(code.length), 10);
     var prevId = code + (num - 1);
     var nextId = code + (num + 1);
@@ -2075,26 +2094,18 @@
   function openCustomerModal(id, c){
     state.activeBox = id;
     document.getElementById("custModalTitle").textContent = c ? t("editTitle") : t("addTitle");
-    document.getElementById("custModalSub").textContent = t("boxLabel") + " " + id;
     updateCustNavButtons(id);
+    if(searchNavList && searchNavList.indexOf(id) !== -1){
+      document.getElementById("custModalSub").textContent = t("resultLabel") + " " + (searchNavIndex + 1) + " " + t("ofLabel") + " " + searchNavList.length;
+    }else{
+      document.getElementById("custModalSub").textContent = t("boxLabel") + " " + id;
+    }
     document.getElementById("fName").value = c ? c.name || "" : "";
     document.getElementById("fMobile").value = c ? c.mobile || "" : "";
     document.getElementById("fAmount").value = c ? c.amount || "" : "";
     document.getElementById("fLastPaid").value = c ? c.lastPaid || "" : "";
     document.getElementById("fDueDate").value = c ? c.dueDate || "" : "";
     document.getElementById("fStb").value = c ? c.stb || "" : "";
-    document.getElementById("fMode").value = c ? c.mode || "cash" : "cash";
-    var collectorField = document.getElementById("fCollectorField");
-    if(state.session && state.session.role === "staff"){
-      document.getElementById("fCollector").value = state.session.staffName;
-      collectorField.style.display = "none";
-    }else{
-      // Office is doing this edit right now — default to "Office", not
-      // whoever collected this customer's last payment, so it's never
-      // silently saved under a staff member who isn't even logged in.
-      collectorField.style.display = "";
-      document.getElementById("fCollector").value = "Office";
-    }
     document.getElementById("fNotes").value = c ? c.notes || "" : "";
     renderCustHistory(id, !!c);
     pendingStatus = c ? c.status || "unpaid" : "unpaid";
@@ -2117,7 +2128,6 @@
     }
     updateStatusPicker();
     document.getElementById("deleteCustBtn").style.display = c ? "inline-block" : "none";
-    document.getElementById("billFromModalBtn").style.display = c ? "inline-block" : "none";
     showOverlay("customerOverlay");
   }
   function updateStatusPicker(){
@@ -2142,7 +2152,7 @@
     var isNew = !state.data[id];
     var prev = state.data[id] || {};
     var wasAlreadyPaid = prev.status === "paid";
-    var collectorVal = (state.session && state.session.role === "staff") ? state.session.staffName : document.getElementById("fCollector").value;
+    var collectorVal = (state.session && state.session.role === "staff") ? state.session.staffName : (prev.collector || "Office");
     // If marking Paid and the Last Paid Date box was left empty, default it to
     // today rather than leaving it blank — this is the date the Report will
     // file the collection under. But only do this when this save is actually
@@ -2179,7 +2189,7 @@
       lastPaid: lastPaidVal,
       dueDate: dueDateVal,
       stb: document.getElementById("fStb").value.trim(),
-      mode: document.getElementById("fMode").value,
+      mode: prev.mode || "cash",
       collector: collectorVal,
       notes: document.getElementById("fNotes").value.trim(),
       suspendedOn: suspendedOnVal,
@@ -2203,11 +2213,6 @@
     delete state.data[id];
     logActivity("removed", id, oldName, "");
     saveData(id); hideOverlay("customerOverlay"); renderAll();
-  });
-  document.getElementById("billFromModalBtn").addEventListener("click", function(){
-    var id = state.activeBox; var c = state.data[id];
-    if(!c){ alert("Save the customer first, then generate the bill."); return; }
-    hideOverlay("customerOverlay"); openReceipt(id, c);
   });
 
   // ---------- Receipt ----------
@@ -2419,10 +2424,12 @@
         "<span class='srd-badge status-" + c.status + "'>" + lbl + "</span>" +
       "</div>";
     }).join("") + (matches.length > LIMIT ? "<div class='srd-more'>+" + (matches.length - LIMIT) + " more — keep typing to narrow it down</div>" : "");
-    dd.querySelectorAll(".srd-row").forEach(function(row){
+    dd.querySelectorAll(".srd-row").forEach(function(row, idx){
       row.addEventListener("click", function(){
         var id = row.getAttribute("data-id");
         dd.classList.remove("show");
+        searchNavList = matches.map(function(m){ return m[0]; });
+        searchNavIndex = idx;
         openCustomerModal(id, state.data[id]);
       });
     });
@@ -3814,7 +3821,7 @@
       row.className = "list-item";
       row.innerHTML = "<span><span class='nm'>"+escapeHtml(c.name||"")+"</span><br><span class='mm'>"+id+" · "+escapeHtml(c.mobile||"")+"</span></span><span class='mm'>"+fmtMoney(c.amount)+"</span>";
       row.addEventListener("click", function(){
-        hideOverlay("listOverlay"); hideOverlay("reportOverlay");
+        hideOverlay("listOverlay"); hideOverlay("reportOverlay"); searchNavList = null;
         openCustomerModal(id, c);
       });
       body.appendChild(row);
@@ -3839,7 +3846,7 @@
       row.className = "list-item";
       row.innerHTML = "<span><span class='nm'>"+escapeHtml(c.name||"")+"</span><br><span class='mm'>"+id+" · "+escapeHtml(c.mobile||"")+"</span></span><span class='mm'>"+fmtMoney(c.amount)+"</span>";
       row.addEventListener("click", function(){
-        hideOverlay("listOverlay"); hideOverlay("reportOverlay");
+        hideOverlay("listOverlay"); hideOverlay("reportOverlay"); searchNavList = null;
         openCustomerModal(id, c);
       });
       body.appendChild(row);
