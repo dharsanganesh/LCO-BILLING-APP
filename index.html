@@ -797,7 +797,10 @@
 <div class="overlay" id="listOverlay">
   <div class="modal">
     <button class="close-x" data-close="listOverlay">✕</button>
-    <h2 id="listTitle">Customers</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-right:26px;">
+      <h2 id="listTitle" style="margin:0;">Customers</h2>
+      <button class="btn btn-outline btn-sm" id="listDownloadBtn" style="flex-shrink:0;">⬇ Download CSV</button>
+    </div>
     <div id="listBody" style="max-height:400px;overflow-y:auto;"></div>
   </div>
 </div>
@@ -3830,16 +3833,22 @@
     });
   }
 
+  var lastListRows = [];
+  var lastListLabel = "";
+
   function showListForPlan(planKey, label){
     var body = document.getElementById("listBody");
     body.innerHTML = "";
     var found = 0;
+    lastListRows = [];
+    lastListLabel = label;
     Object.keys(state.data).forEach(function(id){
       if(!isBoxVisible(id)) return;
       var c = state.data[id];
       var key = String(c.amount != null ? c.amount : "unknown");
       if(key !== planKey) return;
       found++;
+      lastListRows.push({ id:id, name:c.name||"", mobile:c.mobile||"", amount:c.amount, status:c.status||"" });
       var row = document.createElement("div");
       row.className = "list-item";
       row.innerHTML = "<span><span class='nm'>"+escapeHtml(c.name||"")+"</span><br><span class='mm'>"+id+" · "+escapeHtml(c.mobile||"")+"</span></span><span class='mm'>"+fmtMoney(c.amount)+"</span>";
@@ -3860,11 +3869,14 @@
     var body = document.getElementById("listBody");
     body.innerHTML = "";
     var found = 0;
+    lastListRows = [];
+    lastListLabel = label;
     Object.keys(state.data).forEach(function(id){
       if(!isBoxVisible(id)) return;
       var c = state.data[id];
       if(c.status !== statusKey) return;
       found++;
+      lastListRows.push({ id:id, name:c.name||"", mobile:c.mobile||"", amount:c.amount, status:c.status||"" });
       var row = document.createElement("div");
       row.className = "list-item";
       row.innerHTML = "<span><span class='nm'>"+escapeHtml(c.name||"")+"</span><br><span class='mm'>"+id+" · "+escapeHtml(c.mobile||"")+"</span></span><span class='mm'>"+fmtMoney(c.amount)+"</span>";
@@ -3880,6 +3892,30 @@
     document.getElementById("listTitle").textContent = t("listTitleFor")(label);
     showOverlay("listOverlay");
   }
+
+  document.getElementById("listDownloadBtn").addEventListener("click", function(){
+    if(!lastListRows.length){ alert(t("noResultsText")); return; }
+    var header = ["Name","Line No","Mobile","Plan Amount","Status"];
+    var lines = [header.join(",")];
+    lastListRows.forEach(function(r){
+      var row = [r.name, r.id, r.mobile, r.amount, r.status];
+      lines.push(row.map(function(v){
+        var s = String(v == null ? "" : v).replace(/"/g,'""');
+        return /[",\n]/.test(s) ? '"'+s+'"' : s;
+      }).join(","));
+    });
+    var csv = lines.join("\n");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var safeLabel = lastListLabel.replace(/[^a-zA-Z0-9]+/g, "_").toLowerCase();
+    a.href = url;
+    a.download = "customers_" + (safeLabel || "list") + "_" + todayStr() + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
 
   // ---------- Overlays ----------
   function showOverlay(id){ document.getElementById(id).classList.add("show"); }
