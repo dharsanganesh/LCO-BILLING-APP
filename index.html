@@ -2889,13 +2889,19 @@
   function clearSyncConfig(){ localStorage.removeItem(SYNC_CONFIG_KEY); }
 
   function loadFirebaseSDK(callback, onError){
-    if(window.firebase && window.firebase.database){ callback(); return; }
+    if(window.firebase && window.firebase.database && window.firebase.auth){ callback(); return; }
     var s1 = document.createElement("script");
     s1.src = "https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js";
     s1.onload = function(){
       var s2 = document.createElement("script");
       s2.src = "https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js";
-      s2.onload = callback;
+      s2.onload = function(){
+        var s3 = document.createElement("script");
+        s3.src = "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js";
+        s3.onload = callback;
+        s3.onerror = onError;
+        document.head.appendChild(s3);
+      };
       s2.onerror = onError;
       document.head.appendChild(s2);
     };
@@ -3127,17 +3133,19 @@
         if(!window.firebase.apps || !window.firebase.apps.length){ fbApp = firebase.initializeApp(configObj); }
         else{ fbApp = firebase.app(); }
         fbDb = firebase.database();
-        syncEnabled = true;
-        saveSyncConfig({ config:configObj, roomId:roomId, enabled:true });
-        var baseRef = fbDb.ref("cabletv_shops/" + roomId);
-        baseRef.once("value").then(function(snap){
-          attachSyncListener(roomId);
-          if(!snap.exists()){
-            // Brand-new sync room — seed it with whatever this device already has.
-            pushFullSnapshotToCloud();
-          }
-        }).catch(function(){
-          attachSyncListener(roomId);
+        // Anonymous sign-in — invisible to the person using the app, no
+        // extra screen or password. This is what actually satisfies
+        // Firebase's security rules ("auth != null" — see the Rules tab in
+        // Firebase Console); a Sync Code alone can never fully do that,
+        // since it's just a made-up string, not real authentication.
+        firebase.auth().signInAnonymously().then(function(){
+          proceedWithSync();
+        }).catch(function(authErr){
+          // Anonymous Sign-in may not be enabled yet on this Firebase
+          // project. Still try to proceed — if the database rules require
+          // auth, the read/write will simply fail and show as "error"
+          // rather than the app breaking silently.
+          proceedWithSync();
         });
       }catch(err){
         updateSyncStatus("error");
@@ -3147,6 +3155,21 @@
       updateSyncStatus("error");
       if(!silent) alert(t("syncErrorMsg"));
     });
+
+    function proceedWithSync(){
+      syncEnabled = true;
+      saveSyncConfig({ config:configObj, roomId:roomId, enabled:true });
+      var baseRef = fbDb.ref("cabletv_shops/" + roomId);
+      baseRef.once("value").then(function(snap){
+        attachSyncListener(roomId);
+        if(!snap.exists()){
+          // Brand-new sync room — seed it with whatever this device already has.
+          pushFullSnapshotToCloud();
+        }
+      }).catch(function(){
+        attachSyncListener(roomId);
+      });
+    }
   }
 
   document.getElementById("syncBtn").addEventListener("click", function(){
