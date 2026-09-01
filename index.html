@@ -287,8 +287,10 @@
     <button class="btn btn-ghost" id="settingsBtn">⚙ Shop Details</button>
     <button class="btn btn-ghost" id="exportBtn">⬇ Backup</button>
     <button class="btn btn-ghost" id="importBtn">⬆ Restore</button>
+    <button class="btn btn-ghost" id="importCustomersBtn">📥 Import Customers</button>
     <button class="btn btn-ghost" id="logoutBtn">🚪 <span id="logoutBtnLabel">Sign Out</span></button>
     <input type="file" id="importFile" accept="application/json" style="display:none;">
+    <input type="file" id="importCustomersFile" accept=".xlsx,.xls,.csv" style="display:none;">
   </div>
 </header>
 
@@ -805,6 +807,46 @@
   </div>
 </div>
 
+<div class="overlay" id="importCustomersOverlay">
+  <div class="modal wide">
+    <button class="close-x" data-close="importCustomersOverlay">✕</button>
+    <h2 id="icTitle">Import Customers</h2>
+    <div class="sub" id="icSub">Bring your existing customer list in from Excel or CSV — no manual retyping</div>
+
+    <div class="hint" style="margin-bottom:12px;">
+      <span id="icInstructions">Your file needs these columns, in this order: <b>Line, Box Number, Name, Mobile, Plan Amount, Last Paid Date, Next Due Date, STB No, Status</b>. Only Line, Box Number, Name and Plan Amount are required — leave the rest blank if you don't have them. Status can be Paid, Unpaid, or Suspended (defaults to Unpaid if left blank). Dates can be DD-MM-YYYY or YYYY-MM-DD.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      <button class="btn btn-outline btn-sm" id="icTemplateBtn">⬇ Download Template</button>
+      <button class="btn btn-accent btn-sm" id="icChooseFileBtn">📄 Choose Excel/CSV File</button>
+    </div>
+
+    <div id="icPreviewWrap" style="display:none;">
+      <div id="icSummary" style="font-size:13px;margin-bottom:8px;font-weight:600;"></div>
+      <div style="max-height:280px;overflow-y:auto;border:1px solid #e2e2e2;border-radius:8px;margin-bottom:14px;">
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+          <thead>
+            <tr style="background:#f5f5f5;text-align:left;">
+              <th style="padding:6px 8px;">Row</th>
+              <th style="padding:6px 8px;">Line/Box</th>
+              <th style="padding:6px 8px;">Name</th>
+              <th style="padding:6px 8px;">Mobile</th>
+              <th style="padding:6px 8px;">Plan</th>
+              <th style="padding:6px 8px;">Status</th>
+              <th style="padding:6px 8px;">Result</th>
+            </tr>
+          </thead>
+          <tbody id="icPreviewBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" id="icCancelBtn">Cancel</button>
+        <button class="btn btn-accent" id="icConfirmBtn">Import Valid Rows</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- User Manual — colorful flip-book style -->
 <div class="overlay" id="manualOverlay">
   <div class="modal" style="max-width:440px;padding:0;overflow:hidden;border-radius:18px;">
@@ -929,6 +971,20 @@
       tagline:"Customer & Billing Manager",
       searchPlaceholder:"Search name, mobile or box no...",
       reportBtn:"📊 Report", settingsBtn:"⚙ Shop Details", exportBtn:"⬇ Backup", importBtn:"⬆ Restore",
+      importCustomersBtn:"📥 Import Customers", icTitle:"Import Customers", icSub:"Bring your existing customer list in from Excel or CSV — no manual retyping",
+      icInstructions:"Your file needs these columns, in this order: Line, Box Number, Name, Mobile, Plan Amount, Last Paid Date, Next Due Date, STB No, Status. Only Line, Box Number, Name and Plan Amount are required — leave the rest blank if you don't have them. Status can be Paid, Unpaid, or Suspended (defaults to Unpaid if left blank). Dates can be DD-MM-YYYY or YYYY-MM-DD.",
+      icTemplateBtn:"⬇ Download Template", icChooseFileBtn:"📄 Choose Excel/CSV File", icCancelBtn:"Cancel",
+      icErrNoLine:"Missing Line", icErrBadLine:"Line \"{line}\" doesn't exist yet — add it first in Shop Details",
+      icErrNoBoxNum:"Missing/invalid Box Number", icErrBoxTooHigh:"Box Number is higher than this line's max ({max})",
+      icErrNoName:"Missing Name", icErrNoAmount:"Missing/invalid Plan Amount", icErrBadStatus:"Status must be Paid, Unpaid, or Suspended",
+      icErrOccupied:"Box {box} already has a customer — skipped to avoid overwriting",
+      icSummaryText:"{total} rows found — {valid} ready to import, {errors} have errors and will be skipped",
+      icOk:"OK", icConfirmBtnText:"Import {count} Customers", icNoRowsFound:"No data rows found in this file.",
+      icParseError:"Couldn't read this file. Please make sure it's a valid Excel (.xlsx) or CSV file.",
+      icLibLoadError:"Couldn't load the file reader. Check your internet connection and try again.",
+      icConfirmMsg:"Import {count} customers into your box grid now?",
+      icLogImported:"Imported from Excel/CSV",
+      icDoneMsg:"{count} customers imported successfully.",
       legPaid:"Paid", legUnpaid:"Unpaid", legSuspended:"Suspended", legEmpty:"Empty slot (tap + to add)",
       seriesWord:"Line",
       statTotal:"Total Customers", statPaid:"Paid", statUnpaid:"Unpaid", statSuspended:"Suspended",
@@ -1021,6 +1077,20 @@
       tagline:"வாடிக்கையாளர் & பில்லிங் மேலாளர்",
       searchPlaceholder:"பெயர், மொபைல் அல்லது பாக்ஸ் எண் தேடவும்...",
       reportBtn:"📊 அறிக்கை", settingsBtn:"⚙ கடை விவரங்கள்", exportBtn:"⬇ காப்புப்பிரதி", importBtn:"⬆ மீட்டமை",
+      importCustomersBtn:"📥 வாடிக்கையாளர்களை இறக்குமதி செய்", icTitle:"வாடிக்கையாளர்களை இறக்குமதி செய்", icSub:"Excel அல்லது CSV இலிருந்து உங்கள் தற்போதைய வாடிக்கையாளர் பட்டியலைச் சேர்க்கவும் — கைமுறையாக தட்டச்சு செய்ய தேவையில்லை",
+      icInstructions:"உங்கள் கோப்பில் இந்த நெடுவரிசைகள் இந்த வரிசையில் தேவை: Line, Box Number, Name, Mobile, Plan Amount, Last Paid Date, Next Due Date, STB No, Status. Line, Box Number, Name மற்றும் Plan Amount மட்டுமே கட்டாயம் — மற்றவை இல்லாவிட்டால் காலியாக விடவும். Status Paid, Unpaid, அல்லது Suspended ஆக இருக்கலாம் (காலியாக இருந்தால் Unpaid). தேதிகள் DD-MM-YYYY அல்லது YYYY-MM-DD ஆக இருக்கலாம்.",
+      icTemplateBtn:"⬇ மாதிரி படிவத்தை பதிவிறக்கு", icChooseFileBtn:"📄 Excel/CSV கோப்பைத் தேர்ந்தெடு", icCancelBtn:"ரத்து செய்",
+      icErrNoLine:"Line இல்லை", icErrBadLine:"\"{line}\" என்ற Line இன்னும் இல்லை — முதலில் கடை விவரங்களில் சேர்க்கவும்",
+      icErrNoBoxNum:"Box Number இல்லை/தவறானது", icErrBoxTooHigh:"Box Number இந்த Line-இன் அதிகபட்சத்தை ({max}) விட அதிகம்",
+      icErrNoName:"பெயர் இல்லை", icErrNoAmount:"Plan Amount இல்லை/தவறானது", icErrBadStatus:"Status Paid, Unpaid, அல்லது Suspended ஆக இருக்க வேண்டும்",
+      icErrOccupied:"Box {box} இல் ஏற்கனவே ஒரு வாடிக்கையாளர் உள்ளார் — மேலெழுதாமல் தவிர்க்கப்பட்டது",
+      icSummaryText:"{total} வரிசைகள் கிடைத்தன — {valid} இறக்குமதிக்கு தயார், {errors} பிழைகள் உள்ளன, தவிர்க்கப்படும்",
+      icOk:"சரி", icConfirmBtnText:"{count} வாடிக்கையாளர்களை இறக்குமதி செய்", icNoRowsFound:"இந்த கோப்பில் தரவு வரிசைகள் இல்லை.",
+      icParseError:"இந்த கோப்பை படிக்க முடியவில்லை. சரியான Excel (.xlsx) அல்லது CSV கோப்பா என்று உறுதிசெய்யவும்.",
+      icLibLoadError:"கோப்பு படிப்பானை ஏற்ற முடியவில்லை. இணைய இணைப்பை சரிபார்த்து மீண்டும் முயற்சிக்கவும்.",
+      icConfirmMsg:"{count} வாடிக்கையாளர்களை இப்போது உங்கள் பாக்ஸ் கட்டமைப்பில் இறக்குமதி செய்யவா?",
+      icLogImported:"Excel/CSV இலிருந்து இறக்குமதி செய்யப்பட்டது",
+      icDoneMsg:"{count} வாடிக்கையாளர்கள் வெற்றிகரமாக இறக்குமதி செய்யப்பட்டனர்.",
       legPaid:"செலுத்தப்பட்டது", legUnpaid:"செலுத்தப்படவில்லை", legSuspended:"இடைநிறுத்தப்பட்டது", legEmpty:"காலி இடம் (+ தட்டவும்)",
       seriesWord:"வரிசை",
       statTotal:"மொத்த வாடிக்கையாளர்கள்", statPaid:"செலுத்தியவர்", statUnpaid:"செலுத்தாதவர்", statSuspended:"இடைநிறுத்தம்",
@@ -1354,6 +1424,13 @@
     document.getElementById("settingsBtn").textContent = t("settingsBtn");
     document.getElementById("exportBtn").textContent = t("exportBtn");
     document.getElementById("importBtn").textContent = t("importBtn");
+    document.getElementById("importCustomersBtn").textContent = t("importCustomersBtn");
+    document.getElementById("icTitle").textContent = t("icTitle");
+    document.getElementById("icSub").textContent = t("icSub");
+    document.getElementById("icInstructions").textContent = t("icInstructions");
+    document.getElementById("icTemplateBtn").textContent = t("icTemplateBtn");
+    document.getElementById("icChooseFileBtn").textContent = t("icChooseFileBtn");
+    document.getElementById("icCancelBtn").textContent = t("icCancelBtn");
     document.getElementById("legPaid").textContent = t("legPaid");
     document.getElementById("legUnpaid").textContent = t("legUnpaid");
     document.getElementById("legSuspended").textContent = t("legSuspended");
@@ -2542,6 +2619,164 @@
     e.target.value = "";
   });
 
+  // ---------- Import Customers from Excel/CSV ----------
+  var icPendingRows = []; // validated rows ready to commit: { boxId, record }
+
+  function icNormalizeDate(val){
+    if(val === undefined || val === null || val === "") return "";
+    // Excel sometimes gives a serial date NUMBER instead of text — convert it.
+    if(typeof val === "number"){
+      var epoch = new Date(Date.UTC(1899, 11, 30));
+      epoch.setUTCDate(epoch.getUTCDate() + Math.round(val));
+      return epoch.toISOString().slice(0,10);
+    }
+    var s = String(val).trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    var m = s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+    if(m){
+      var dd = m[1].padStart(2,"0"), mm = m[2].padStart(2,"0"), yyyy = m[3];
+      return yyyy + "-" + mm + "-" + dd;
+    }
+    return "";
+  }
+
+  function icParseRow(cells, rowNum){
+    var line = String(cells[0] || "").trim().toUpperCase();
+    var boxNum = String(cells[1] || "").trim();
+    var name = String(cells[2] || "").trim();
+    var mobile = String(cells[3] || "").trim();
+    var planAmount = cells[4];
+    var lastPaid = icNormalizeDate(cells[5]);
+    var dueDate = icNormalizeDate(cells[6]);
+    var stb = String(cells[7] || "").trim();
+    var statusRaw = String(cells[8] || "").trim().toLowerCase();
+
+    var errors = [];
+    var cat = state.categories.filter(function(c){ return c.code === line; })[0];
+    if(!line) errors.push(t("icErrNoLine"));
+    else if(!cat) errors.push(t("icErrBadLine").replace("{line}", line));
+
+    var num = parseInt(boxNum, 10);
+    if(!boxNum || isNaN(num) || num <= 0) errors.push(t("icErrNoBoxNum"));
+    else if(cat && num > cat.max) errors.push(t("icErrBoxTooHigh").replace("{max}", cat.max));
+
+    if(!name) errors.push(t("icErrNoName"));
+
+    var amt = Number(planAmount);
+    if(planAmount === undefined || planAmount === "" || isNaN(amt) || amt <= 0) errors.push(t("icErrNoAmount"));
+
+    var status = "unpaid";
+    if(statusRaw === "paid") status = "paid";
+    else if(statusRaw === "suspended") status = "suspended";
+    else if(statusRaw && statusRaw !== "unpaid") errors.push(t("icErrBadStatus"));
+
+    var boxId = (cat ? cat.code : line) + (isNaN(num) ? boxNum : num);
+    if(errors.length === 0 && state.data[boxId]) errors.push(t("icErrOccupied").replace("{box}", boxId));
+
+    return {
+      rowNum: rowNum, boxId: boxId, line: line, boxNum: boxNum, name: name, mobile: mobile,
+      amount: amt, lastPaid: lastPaid, dueDate: dueDate, stb: stb, status: status,
+      errors: errors, valid: errors.length === 0
+    };
+  }
+
+  function icRenderPreview(rows){
+    icPendingRows = rows.filter(function(r){ return r.valid; });
+    var validCount = icPendingRows.length;
+    var errorCount = rows.length - validCount;
+    document.getElementById("icSummary").textContent =
+      t("icSummaryText").replace("{total}", rows.length).replace("{valid}", validCount).replace("{errors}", errorCount);
+    var body = document.getElementById("icPreviewBody");
+    body.innerHTML = rows.map(function(r){
+      var resultCell = r.valid
+        ? "<span style='color:#3B6D11;font-weight:600;'>" + t("icOk") + "</span>"
+        : "<span style='color:#B23A2E;'>" + escapeHtml(r.errors.join("; ")) + "</span>";
+      return "<tr style='border-top:1px solid #eee;" + (r.valid ? "" : "background:#FDECEA;") + "'>" +
+        "<td style='padding:5px 8px;'>" + r.rowNum + "</td>" +
+        "<td style='padding:5px 8px;'>" + escapeHtml(r.line + r.boxNum) + "</td>" +
+        "<td style='padding:5px 8px;'>" + escapeHtml(r.name) + "</td>" +
+        "<td style='padding:5px 8px;'>" + escapeHtml(r.mobile) + "</td>" +
+        "<td style='padding:5px 8px;'>" + (isNaN(r.amount) ? "" : fmtMoney(r.amount)) + "</td>" +
+        "<td style='padding:5px 8px;'>" + escapeHtml(r.status) + "</td>" +
+        "<td style='padding:5px 8px;'>" + resultCell + "</td>" +
+        "</tr>";
+    }).join("");
+    document.getElementById("icPreviewWrap").style.display = "";
+    document.getElementById("icConfirmBtn").textContent = t("icConfirmBtnText").replace("{count}", validCount);
+    document.getElementById("icConfirmBtn").disabled = validCount === 0;
+  }
+
+  document.getElementById("importCustomersBtn").addEventListener("click", function(){
+    document.getElementById("icPreviewWrap").style.display = "none";
+    icPendingRows = [];
+    showOverlay("importCustomersOverlay");
+  });
+  document.getElementById("icChooseFileBtn").addEventListener("click", function(){
+    document.getElementById("importCustomersFile").click();
+  });
+  document.getElementById("icTemplateBtn").addEventListener("click", function(){
+    var header = ["Line","Box Number","Name","Mobile","Plan Amount","Last Paid Date","Next Due Date","STB No","Status"];
+    var sample = ["U","5","Ravi Kumar","9876543210","250","01-06-2026","01-07-2026","","Unpaid"];
+    var csv = header.join(",") + "\n" + sample.join(",");
+    var blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "customer_import_template.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+  document.getElementById("importCustomersFile").addEventListener("change", function(e){
+    var file = e.target.files[0];
+    if(!file) return;
+    loadSheetJS(function(){
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        try{
+          var data = new Uint8Array(ev.target.result);
+          var workbook = XLSX.read(data, { type: "array", cellDates: false });
+          var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          var rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+          // Skip a header row if the first cell of row 1 looks like a label, not a line code
+          var startAt = 0;
+          if(rows.length && String(rows[0][0]||"").trim().toLowerCase() === "line") startAt = 1;
+          var parsed = [];
+          for(var i = startAt; i < rows.length; i++){
+            var cells = rows[i];
+            if(!cells || cells.every(function(v){ return String(v||"").trim() === ""; })) continue; // skip blank rows
+            parsed.push(icParseRow(cells, i + 1));
+          }
+          if(parsed.length === 0){ alert(t("icNoRowsFound")); return; }
+          icRenderPreview(parsed);
+        }catch(err){
+          alert(t("icParseError"));
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      e.target.value = "";
+    }, function(){ alert(t("icLibLoadError")); });
+  });
+  document.getElementById("icCancelBtn").addEventListener("click", function(){
+    hideOverlay("importCustomersOverlay");
+  });
+  document.getElementById("icConfirmBtn").addEventListener("click", function(){
+    if(!icPendingRows.length) return;
+    if(!window.confirm(t("icConfirmMsg").replace("{count}", icPendingRows.length))) return;
+    var ids = [];
+    icPendingRows.forEach(function(r){
+      state.data[r.boxId] = {
+        name: r.name, mobile: r.mobile, amount: r.amount, status: r.status,
+        lastPaid: r.lastPaid, dueDate: r.dueDate, stb: r.stb,
+        mode: "cash", collector: "Office", notes: "", updatedAt: Date.now()
+      };
+      ids.push(r.boxId);
+      logActivity("added", r.boxId, r.name, t("icLogImported"));
+    });
+    saveData(ids);
+    hideOverlay("importCustomersOverlay");
+    renderAll();
+    alert(t("icDoneMsg").replace("{count}", ids.length));
+  });
+
   // ---------- Prepare Customer Copy (seller tool, for packaging licensed sales) ----------
   var PC_CONFIG_KEY = "cabletv_billing_pc_license_config_v1";
   var PC_CONTACT_KEY = "cabletv_billing_pc_contact_v1";
@@ -2890,6 +3125,15 @@
   }
   function saveSyncConfig(conf){ localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(conf)); }
   function clearSyncConfig(){ localStorage.removeItem(SYNC_CONFIG_KEY); }
+
+  function loadSheetJS(callback, onError){
+    if(window.XLSX){ callback(); return; }
+    var s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    s.onload = callback;
+    s.onerror = onError;
+    document.head.appendChild(s);
+  }
 
   function loadFirebaseSDK(callback, onError){
     if(window.firebase && window.firebase.database && window.firebase.auth){ callback(); return; }
@@ -3930,7 +4174,7 @@
 
   // ---------- Login / Access Control ----------
   function applyRoleUI(){
-    var officeOnly = ["staffBtn","settingsBtn","importBtn"];
+    var officeOnly = ["staffBtn","settingsBtn","importBtn","importCustomersBtn"];
     officeOnly.forEach(function(id){
       document.getElementById(id).style.display = isOffice() ? "" : "none";
     });
