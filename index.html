@@ -1388,7 +1388,6 @@
     var entry = { id: Date.now() + "_" + Math.random().toString(36).slice(2,8), time: Date.now(), actor: actor, action: action, box: boxId, name: customerName || "", extra: extra || "" };
     if(meta) entry.meta = meta;
     state.activityLog.unshift(entry);
-    if(state.activityLog.length > 300){ state.activityLog = state.activityLog.slice(0, 300); }
     saveActivity(entry);
     return entry;
   }
@@ -3267,7 +3266,7 @@
       // device's copy overwriting the other's.
       var list = Object.keys(val).map(function(k){ return val[k]; });
       list.sort(function(a,b){ return (b.time || 0) - (a.time || 0); });
-      state.activityLog = list.slice(0, 300);
+      state.activityLog = list;
       localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
       endApplyingRemote();
     });
