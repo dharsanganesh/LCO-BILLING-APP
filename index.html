@@ -666,6 +666,10 @@
         <input id="newLineMax" type="number" min="1" max="999" placeholder="100" />
       </div>
     </div>
+    <div class="field">
+      <label id="lblLineName">Area Name (optional) — e.g. Kattur, Colony, Main Road</label>
+      <input id="newLineName" type="text" maxlength="40" placeholder="e.g. Kattur" />
+    </div>
     <div class="modal-actions">
       <button class="btn btn-accent" id="addLineBtn">➕ Add Line</button>
     </div>
@@ -1045,6 +1049,7 @@
       modeTitle:"Billing",
       linesTitle:"Manage Lines", linesSub:"Add a new customer line like B, C etc.",
       lblLinePrefix:"New Line Letter (e.g. B)", lblLineMax:"Max Customers in this Line", addLineBtn:"➕ Add Line",
+      lblLineName:"Area Name (optional) — e.g. Kattur, Colony, Main Road", areaNamePlaceholder:"e.g. Kattur",
       reportTitleH:"Collection Report", reportSub:"Based on current status of all customers",
       reportTotalCollection:"Total Collection", reportCash:"Cash Collection", reportUpi:"UPI Collection", reportOffice:"Office Collection",
       lblReportFrom:"From", lblReportTo:"To", reportClearBtn:"Show All", reportTodayBtn:"Today",
@@ -1151,6 +1156,7 @@
       modeTitle:"பில்லிங்",
       linesTitle:"வரிசைகளை நிர்வகி", linesSub:"B, C போன்ற புதிய வரிசையைச் சேர்க்கவும்.",
       lblLinePrefix:"புதிய வரிசை எழுத்து (உதா. B)", lblLineMax:"இந்த வரிசையின் அதிகபட்ச எண்", addLineBtn:"➕ வரிசை சேர்",
+      lblLineName:"பகுதி பெயர் (விருப்பம்) — உதா. கட்டூர், காலனி, மெயின் ரோடு", areaNamePlaceholder:"உதா. கட்டூர்",
       reportTitleH:"வசூல் அறிக்கை", reportSub:"தற்போதைய நிலையின் அடிப்படையில்",
       reportTotalCollection:"மொத்த வசூல்", reportCash:"பணமாக வசூல்", reportUpi:"UPI வசூல்", reportOffice:"அலுவலக வசூல்",
       lblReportFrom:"தொடக்கம்", lblReportTo:"முடிவு", reportClearBtn:"அனைத்தும் காட்டு", reportTodayBtn:"இன்று",
@@ -1526,6 +1532,7 @@
     document.getElementById("linesSub").textContent = t("linesSub");
     document.getElementById("lblLinePrefix").textContent = t("lblLinePrefix");
     document.getElementById("lblLineMax").textContent = t("lblLineMax");
+    document.getElementById("lblLineName").textContent = t("lblLineName");
     document.getElementById("addLineBtn").textContent = t("addLineBtn");
     document.getElementById("reportTitleH").textContent = t("reportTitleH");
     document.getElementById("reportSub").textContent = t("reportSub");
@@ -1669,7 +1676,7 @@
       cb.checked = selectedLines.indexOf(cat.code) !== -1;
       wrap.appendChild(cb);
       var span = document.createElement("span");
-      span.textContent = cat.code;
+      span.textContent = cat.code + (cat.name ? " · " + cat.name : "");
       wrap.appendChild(span);
       box.appendChild(wrap);
     });
@@ -1742,7 +1749,7 @@
       for(var i=1;i<=cat.max;i++){ if(state.data[cat.code+i]) count++; }
       var tab = document.createElement("div");
       tab.className = "tab" + (state.activeCat === cat.code ? " active" : "");
-      tab.innerHTML = cat.code + " " + t("seriesWord") + " <span class='cnt'>(" + count + "/" + cat.max + ")</span>";
+      tab.innerHTML = cat.code + (cat.name ? " · " + escapeHtml(cat.name) : "") + " " + t("seriesWord") + " <span class='cnt'>(" + count + "/" + cat.max + ")</span>";
       tab.addEventListener("click", function(code){
         return function(){
           state.activeCat = code; state.searchTerm = "";
@@ -1781,13 +1788,23 @@
 
       var nameSpan = document.createElement("span");
       nameSpan.className = "nm";
-      nameSpan.textContent = cat.code + " " + t("seriesWord") + " (" + count + " " + t("linesUsed") + ")";
+      nameSpan.textContent = cat.code + (cat.name ? " · " + cat.name : "") + " " + t("seriesWord") + " (" + count + " " + t("linesUsed") + ")";
       row.appendChild(nameSpan);
 
       var rightWrap = document.createElement("span");
       rightWrap.style.display = "flex";
       rightWrap.style.alignItems = "center";
+      rightWrap.style.flexWrap = "wrap";
       rightWrap.style.gap = "6px";
+
+      var areaInput = document.createElement("input");
+      areaInput.type = "text";
+      areaInput.maxLength = 40;
+      areaInput.value = cat.name || "";
+      areaInput.placeholder = t("areaNamePlaceholder");
+      areaInput.title = t("lblLineName");
+      areaInput.style.cssText = "width:110px;padding:5px 6px;border:1px solid #ccd4dc;border-radius:6px;font-size:12.5px;";
+      rightWrap.appendChild(areaInput);
 
       var maxInput = document.createElement("input");
       maxInput.type = "number";
@@ -1804,6 +1821,7 @@
         if(!newMax || newMax < 1){ alert(t("invalidMax")); return; }
         if(newMax < count){ alert(t("maxTooSmall").replace("{n}", count)); return; }
         cat.max = newMax;
+        cat.name = areaInput.value.trim();
         saveCategories();
         renderLinesList(); renderTabs(); renderGrid();
       });
@@ -1828,13 +1846,15 @@
   document.getElementById("addLineBtn").addEventListener("click", function(){
     var prefix = document.getElementById("newLinePrefix").value.trim().toUpperCase();
     var max = parseInt(document.getElementById("newLineMax").value, 10);
+    var areaName = document.getElementById("newLineName").value.trim();
     if(!prefix || !/^[A-Z]{1,3}$/.test(prefix)){ alert("Please enter a valid letter, e.g. B"); return; }
     if(!max || max < 1){ alert("Please enter a valid maximum count."); return; }
     var exists = state.categories.some(function(c){ return c.code === prefix; });
     if(exists){ alert(t("lineExists")); return; }
-    state.categories.push({ code:prefix, max:max });
+    state.categories.push({ code:prefix, max:max, name:areaName });
     saveCategories();
     state.activeCat = prefix;
+    document.getElementById("newLineName").value = "";
     renderLinesList(); renderTabs(); renderGrid();
     alert(t("lineAdded"));
   });
