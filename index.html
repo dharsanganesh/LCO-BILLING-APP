@@ -1065,6 +1065,7 @@
       actionAdded:"Added customer", actionUpdated:"Updated customer", actionRemoved:"Removed customer", actionPaid:"Marked Paid", actionAutoUnpaid:"Auto-marked Unpaid (due date passed)",
       actionPaymentCancelled:"Payment Cancelled",
       confirmMarkPaidMsg:"Mark {name} as Paid — {amount} received via {mode}?",
+      confirmRemoveMsg:"Remove customer from box {box}? This cannot be undone.",
       quickCancelPay:"↩ Cancel Payment",
       confirmCancelPayMsg:"Cancel the last payment for {name} ({amount})? This will revert their status, due date and amount back to before that payment.",
       cancelPayLogMsg:"Reversed a wrongly-made payment of {amount}",
@@ -1172,6 +1173,7 @@
       actionAdded:"வாடிக்கையாளர் சேர்க்கப்பட்டார்", actionUpdated:"வாடிக்கையாளர் புதுப்பிக்கப்பட்டார்", actionRemoved:"வாடிக்கையாளர் நீக்கப்பட்டார்", actionPaid:"செலுத்தியதாக குறிக்கப்பட்டது", actionAutoUnpaid:"தானாக செலுத்தாதது எனக் குறிக்கப்பட்டது",
       actionPaymentCancelled:"பணம் செலுத்தியது ரத்து செய்யப்பட்டது",
       confirmMarkPaidMsg:"{name} க்கு {amount} {mode} மூலம் பெறப்பட்டதாக செலுத்தியதாக குறிக்கவா?",
+      confirmRemoveMsg:"பாக்ஸ் {box} இலிருந்து வாடிக்கையாளரை நீக்கவா? இதை மீட்க முடியாது.",
       quickCancelPay:"↩ பணம் ரத்து",
       confirmCancelPayMsg:"{name} க்கான கடைசி பணம் செலுத்துதலை ({amount}) ரத்து செய்யவா? இது நிலை, அடுத்த தேதி மற்றும் தொகையை முந்தைய நிலைக்கு மாற்றும்.",
       cancelPayLogMsg:"தவறாக செலுத்தப்பட்ட {amount} ரத்து செய்யப்பட்டது",
@@ -2311,7 +2313,7 @@
   document.getElementById("deleteCustBtn").addEventListener("click", function(){
     if(!isOffice()) return; // Office-only, same as the visibility check above
     var id = state.activeBox;
-    if(!confirm("Remove customer from box " + id + "? This cannot be undone.")) return;
+    if(!confirm(t("confirmRemoveMsg").replace("{box}", id))) return;
     var oldName = state.data[id] ? state.data[id].name : "";
     delete state.data[id];
     logActivity("removed", id, oldName, "");
