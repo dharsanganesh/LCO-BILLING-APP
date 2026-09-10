@@ -3227,6 +3227,20 @@
           if(localC){ merged[id] = localC; idsToRepush.push(id); }
           return;
         }
+        if(remoteC.__deleted){
+          // This customer was deliberately removed on some device. Normally
+          // the deletion wins and the id is simply left out of "merged"
+          // (which removes it locally too). The one exception: if this
+          // device has a local edit stamped AFTER the deletion time, treat
+          // that as an intentional restore and push it back up — otherwise
+          // that edit would just vanish the next time this listener fires.
+          var localTimeVsDelete = localC ? (localC.updatedAt || 0) : 0;
+          if(localC && localTimeVsDelete > (remoteC.updatedAt || 0)){
+            merged[id] = localC;
+            idsToRepush.push(id);
+          }
+          return;
+        }
         if(!localC){ merged[id] = remoteC; return; }
         var localTime = localC.updatedAt || 0;
         var remoteTime = remoteC.updatedAt || 0;
@@ -3339,7 +3353,17 @@
     var conf = loadSyncConfig();
     if(!conf) return;
     var val = state.data[id];
-    if(val === undefined){ fbDb.ref("cabletv_shops/" + conf.roomId + "/data/" + id).set(null); return; }
+    if(val === undefined){
+      // Write a tombstone rather than clearing the node outright. A cleared
+      // node is indistinguishable from "no other device has pushed this
+      // customer yet", so another device's merge logic would read the gap
+      // as an unsynced NEW customer and re-upload its own local copy —
+      // resurrecting a customer that was deliberately removed. A tombstone
+      // makes the deletion explicit and timestamped so every device can
+      // recognize it as a real deletion instead of guessing.
+      fbDb.ref("cabletv_shops/" + conf.roomId + "/data/" + id).set({ __deleted: true, updatedAt: Date.now() });
+      return;
+    }
     // Firebase's SDK throws SYNCHRONOUSLY if the object being saved contains
     // an "undefined" value anywhere inside it — a very easy trap to fall
     // into with optional fields like suspendedOn, or a customer's very
