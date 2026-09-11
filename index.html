@@ -1189,10 +1189,14 @@
     }
   };
 
+  // Matches the "Kadai Bill" WhatsApp poster theme: dark green pages with a
+  // gold/orange accent for headings and numbered badges, instead of the old
+  // rotating rainbow of unrelated colors.
   var MANUAL_PALETTE = [
-    ["#1e3a5f","#2c5f8a"], ["#b5541f","#d97b3f"], ["#1f7a4d","#2fa06a"],
-    ["#6b3fa0","#8f5fc7"], ["#0f2a3f","#16405e"], ["#3f6b7a","#5f95a6"]
+    ["#132318","#20402a"], ["#0f1e14","#1c3624"], ["#152a1b","#254a30"]
   ];
+  var MANUAL_GOLD = "#f2b03b";
+  var MANUAL_CREAM = "#f5f1e3";
   var MANUAL_PAGES = [
     { icon:"🔑", tEn:"Signing In", tTa:"உள்நுழைவது",
       xEn:"Office signs in with the Office PIN (default 1234, change it in Shop Details) and can see and do everything. Area Managers sign in with their own name and PIN, and only see the lines (A, B, U, etc.) assigned to them.",
@@ -1244,23 +1248,23 @@
       var splashImg = document.querySelector("#appSplash img");
       if(splashImg) logoSrc = splashImg.src;
       viewport.innerHTML =
-        "<div style='background:linear-gradient(160deg,#0a1826,#16405e);min-height:480px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;text-align:center;color:#fff;'>" +
+        "<div style='background:linear-gradient(160deg,#0f1e14,#1c3624);min-height:480px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px 24px;text-align:center;color:"+MANUAL_CREAM+";'>" +
           (logoSrc ? "<img src='"+logoSrc+"' style='width:110px;height:110px;border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,.4);margin-bottom:20px;'>" : "") +
           "<div style='font-size:22px;font-weight:800;letter-spacing:.02em;'>Cable TV Billing Manager</div>" +
-          "<div style='font-size:13px;color:#9fc4dd;margin-top:6px;font-weight:700;letter-spacing:.03em;'>by SIMPLE APPS</div>" +
-          "<div style='margin-top:30px;font-size:13.5px;color:#cfe0ec;font-weight:600;'>📖 User Manual · பயனர் கையேடு</div>" +
-          "<div style='margin-top:6px;font-size:12px;color:#8fa9bb;'>Tap Next to begin · தொடர Next தட்டவும்</div>" +
+          "<div style='font-size:13px;color:"+MANUAL_GOLD+";margin-top:6px;font-weight:700;letter-spacing:.03em;'>by SIMPLE APPS</div>" +
+          "<div style='margin-top:30px;font-size:13.5px;color:"+MANUAL_CREAM+";font-weight:600;'>📖 User Manual · பயனர் கையேடு</div>" +
+          "<div style='margin-top:6px;font-size:12px;color:rgba(245,241,227,.65);'>Tap Next to begin · தொடர Next தட்டவும்</div>" +
         "</div>";
     }else{
       var page = MANUAL_PAGES[manualPageIndex - 1];
       var colors = MANUAL_PALETTE[(manualPageIndex - 1) % MANUAL_PALETTE.length];
       viewport.innerHTML =
-        "<div style='background:linear-gradient(160deg,"+colors[0]+","+colors[1]+");min-height:480px;display:flex;flex-direction:column;justify-content:center;padding:34px 26px;color:#fff;'>" +
-          "<div style='font-size:44px;margin-bottom:14px;'>"+page.icon+"</div>" +
-          "<div style='font-size:19px;font-weight:800;'>"+escapeHtml(page.tEn)+"</div>" +
-          "<div style='font-size:14px;font-weight:700;color:rgba(255,255,255,.85);margin-top:2px;margin-bottom:16px;'>"+escapeHtml(page.tTa)+"</div>" +
+        "<div style='background:linear-gradient(160deg,"+colors[0]+","+colors[1]+");min-height:480px;display:flex;flex-direction:column;justify-content:center;padding:34px 26px;color:"+MANUAL_CREAM+";'>" +
+          "<div style='width:56px;height:56px;border-radius:50%;background:"+MANUAL_GOLD+";display:flex;align-items:center;justify-content:center;font-size:26px;margin-bottom:16px;'>"+page.icon+"</div>" +
+          "<div style='font-size:19px;font-weight:800;color:"+MANUAL_GOLD+";'>"+escapeHtml(page.tEn)+"</div>" +
+          "<div style='font-size:14px;font-weight:700;color:rgba(245,241,227,.85);margin-top:2px;margin-bottom:16px;'>"+escapeHtml(page.tTa)+"</div>" +
           "<div style='font-size:14px;line-height:1.6;'>"+escapeHtml(page.xEn)+"</div>" +
-          "<div style='height:1px;background:rgba(255,255,255,.28);margin:16px 0;'></div>" +
+          "<div style='height:1px;background:rgba(242,176,59,.35);margin:16px 0;'></div>" +
           "<div style='font-size:14px;line-height:1.75;'>"+escapeHtml(page.xTa)+"</div>" +
         "</div>";
     }
@@ -1273,7 +1277,7 @@
     for(var i = 1; i <= total; i++){
       var dot = document.createElement("span");
       dot.style.cssText = "width:6px;height:6px;border-radius:50%;display:inline-block;background:" +
-        (i === manualPageIndex ? "var(--accent)" : "#d7dde3") + ";transition:background .2s;";
+        (i === manualPageIndex ? MANUAL_GOLD : "#cfd6cf") + ";transition:background .2s;";
       dots.appendChild(dot);
     }
   }
@@ -2256,6 +2260,20 @@
     var isNew = !state.data[id];
     var prev = state.data[id] || {};
     var wasAlreadyPaid = prev.status === "paid";
+    // Flipping an existing customer to Paid from here does NOT log a
+    // collection (see statusPickerHint above) — it's meant only for
+    // correcting a mistake or backdating, not for recording a real payment.
+    // That used to be one unconfirmed click away, which is exactly how a
+    // customer can end up shown Paid with no collection behind it (a wrong
+    // box tapped, or a status left selected while editing something
+    // unrelated). Require an explicit confirmation for that specific
+    // transition — same spirit as Mark Paid's own confirm popup — while
+    // leaving every other save (editing an already-paid customer's notes,
+    // switching to Unpaid/Suspended, adding a brand-new customer) untouched.
+    if(!isNew && !wasAlreadyPaid && pendingStatus === "paid"){
+      var confirmPaidMsg = "Mark " + (name || id) + " as PAID?\n\nThis does NOT log a collection in Payment History or the Activity Log — only use this to correct a mistake or backdate, never for a payment just received.\n\nFor a real payment, cancel this and use \"Mark Paid\" on their box instead.";
+      if(!window.confirm(confirmPaidMsg)) return;
+    }
     var collectorVal = (state.session && state.session.role === "staff") ? state.session.staffName : (prev.collector || "Office");
     // If marking Paid and the Last Paid Date box was left empty, default it to
     // today rather than leaving it blank — this is the date the Report will
@@ -2386,15 +2404,10 @@
     });
     return html2canvasLoading;
   }
-  document.getElementById("shareToPrintBtn").addEventListener("click", function(){
-    var btn = this;
-    if(!navigator.share || !navigator.canShare){
-      alert(t("shareNotSupported"));
-      return;
-    }
-    var original = btn.textContent;
-    btn.textContent = "…";
-    btn.disabled = true;
+  // Renders the on-screen receipt card to a PNG blob. Shared by both "Share
+  // to Print App" and "Send on WhatsApp" so both send the exact same-looking
+  // receipt image instead of two different representations of the bill.
+  function captureReceiptBlob(){
     var target = document.getElementById("receiptPreview");
     var modalEl = target.closest(".modal");
     var prevTransform = modalEl ? modalEl.style.transform : "";
@@ -2403,7 +2416,7 @@
     // a mostly-blank image with the receipt shrunk into a corner. Clear it just
     // for the capture, then restore it right after.
     if(modalEl){ modalEl.style.transition = "none"; modalEl.style.transform = "none"; }
-    loadHtml2Canvas().then(function(){
+    return loadHtml2Canvas().then(function(){
       var scale = 2.5;
       return window.html2canvas(target, {
         backgroundColor:"#ffffff",
@@ -2415,7 +2428,20 @@
       });
     }).then(function(canvas){
       return new Promise(function(resolve){ canvas.toBlob(resolve, "image/png"); });
-    }).then(function(blob){
+    }).finally(function(){
+      if(modalEl){ modalEl.style.transform = prevTransform; modalEl.style.transition = prevTransition; }
+    });
+  }
+  document.getElementById("shareToPrintBtn").addEventListener("click", function(){
+    var btn = this;
+    if(!navigator.share || !navigator.canShare){
+      alert(t("shareNotSupported"));
+      return;
+    }
+    var original = btn.textContent;
+    btn.textContent = "…";
+    btn.disabled = true;
+    captureReceiptBlob().then(function(blob){
       if(!blob) throw new Error("no-blob");
       var file = new File([blob], "receipt.png", { type:"image/png" });
       if(!navigator.canShare({ files:[file] })){ throw new Error("cannot-share-files"); }
@@ -2424,7 +2450,6 @@
       if(err && err.name === "AbortError"){ return; } // user cancelled the share sheet, not an error
       alert(t("shareFailed"));
     }).finally(function(){
-      if(modalEl){ modalEl.style.transform = prevTransform; modalEl.style.transition = prevTransition; }
       btn.textContent = original;
       btn.disabled = false;
     });
@@ -2451,7 +2476,37 @@
     }
     lines.push("Invoice: " + btn.getAttribute("data-invoice"));
     lines.push("- " + (s.shopName || "Cable TV Network") + (s.phone ? (" | " + s.phone) : ""));
-    window.open("https://wa.me/" + num + "?text=" + encodeURIComponent(lines.join("\n")), "_blank");
+    var caption = lines.join("\n");
+    var waTextLink = "https://wa.me/" + num + "?text=" + encodeURIComponent(caption);
+
+    // A wa.me link can only ever pre-fill TEXT — WhatsApp's own web link
+    // format has no way to attach a file, so a plain link can never carry
+    // the actual receipt image. The only way a web page can hand an image
+    // to WhatsApp at all is the device's own Share sheet (Web Share API),
+    // which lets the person pick WhatsApp themselves with the image already
+    // attached. Where that isn't available (typically desktop browsers),
+    // fall back to the original text-only message rather than send nothing.
+    if(!navigator.share || !navigator.canShare){
+      window.open(waTextLink, "_blank");
+      return;
+    }
+    var original = btn.textContent;
+    btn.textContent = "…";
+    btn.disabled = true;
+    captureReceiptBlob().then(function(blob){
+      if(!blob) throw new Error("no-blob");
+      var file = new File([blob], "receipt.png", { type:"image/png" });
+      if(!navigator.canShare({ files:[file] })){ throw new Error("cannot-share-files"); }
+      return navigator.share({ files:[file], text: caption, title: t("receiptTitle") });
+    }).catch(function(err){
+      if(err && err.name === "AbortError"){ return; } // user cancelled the share sheet, not an error
+      // Couldn't share the image for some reason (older device, etc.) —
+      // still get the bill to the customer via the text-only link.
+      window.open(waTextLink, "_blank");
+    }).finally(function(){
+      btn.textContent = original;
+      btn.disabled = false;
+    });
   });
   document.getElementById("sendSmsBtn").addEventListener("click", function(){
     var btn = this;
@@ -3297,17 +3352,49 @@
 
     syncRefs.activityLog = fbDb.ref(base + "/activityLog");
     syncRefs.activityLog.on("value", function(snapshot){
-      var val = snapshot.val();
-      if(!val) return;
+      var val = snapshot.val() || {};
       beginApplyingRemote();
-      // Stored as an object keyed by each entry's own id, so edits to an
-      // existing entry (like tagging a payment cancelled) and brand-new
-      // entries from either device both merge correctly instead of one
-      // device's copy overwriting the other's.
-      var list = Object.keys(val).map(function(k){ return val[k]; });
+      // Merge by entry id instead of replacing state.activityLog wholesale.
+      // A straight replace silently drops any entry this device created but
+      // hadn't yet managed to push to the cloud (e.g. logged while briefly
+      // offline collecting a payment) the moment ANY other activity in the
+      // shop causes this listener to fire — the entry vanishes from this
+      // device too, without ever reaching the cloud. That's why a customer
+      // can show Paid with a real date but have nothing to show for it in
+      // Payment History or the Activity Log. Local-only entries are now
+      // kept and re-pushed instead of being discarded.
+      var merged = {};
+      var idsToRepush = [];
+      var localById = {};
+      state.activityLog.forEach(function(e){ localById[e.id] = e; });
+      var allIds = {};
+      Object.keys(val).forEach(function(id){ allIds[id] = true; });
+      Object.keys(localById).forEach(function(id){ allIds[id] = true; });
+      Object.keys(allIds).forEach(function(id){
+        var localE = localById[id];
+        var remoteE = val[id];
+        if(!remoteE){
+          // Never reached the cloud — keep it and push it now.
+          merged[id] = localE;
+          idsToRepush.push(id);
+          return;
+        }
+        if(!localE){ merged[id] = remoteE; return; }
+        // Both sides have it. A "cancelled" tag is one-directional (a
+        // payment is never un-cancelled), so OR it in rather than letting
+        // whichever side is picked silently lose that flag.
+        if(localE.cancelled && !remoteE.cancelled){
+          merged[id] = Object.assign({}, remoteE, { cancelled:true, cancelledAt: localE.cancelledAt });
+          idsToRepush.push(id);
+        }else{
+          merged[id] = remoteE;
+        }
+      });
+      var list = Object.keys(merged).map(function(id){ return merged[id]; });
       list.sort(function(a,b){ return (b.time || 0) - (a.time || 0); });
       state.activityLog = list;
       localStorage.setItem(ACTIVITY_KEY, JSON.stringify(state.activityLog));
+      idsToRepush.forEach(function(id){ pushActivityEntryById(id); });
       endApplyingRemote();
     });
 
@@ -3410,9 +3497,22 @@
     var conf = loadSyncConfig();
     if(!conf) return;
     var now = Date.now();
+    // IMPORTANT: do NOT stamp every record's updatedAt to "now" here. This
+    // function pushes the ENTIRE customer list in one shot (restoring a
+    // backup, first connecting a device, or the old-device tripwire below),
+    // and blindly relabeling everything as "just updated" defeats the
+    // timestamp comparison every other device relies on to decide whose
+    // copy of a customer is actually current. That let a genuinely stale
+    // record — sitting untouched on a phone that hadn't synced in a while,
+    // or inside an old backup file — falsely look like the newest version
+    // and silently overwrite correct, current data on every other device,
+    // with no edit and no Activity Log entry to explain it. Only records
+    // that have never been stamped at all (very old data predating this
+    // field) get "now" here; everything else keeps its real, honest
+    // updatedAt from whenever it was actually last saved.
     var stampedData = {};
     Object.keys(state.data).forEach(function(id){
-      stampedData[id] = Object.assign({}, state.data[id], { updatedAt: now });
+      stampedData[id] = state.data[id].updatedAt ? state.data[id] : Object.assign({}, state.data[id], { updatedAt: now });
     });
     state.data = stampedData;
     localStorage.setItem(DATA_KEY, JSON.stringify(state.data));
@@ -3458,8 +3558,16 @@
       var baseRef = fbDb.ref("cabletv_shops/" + roomId);
       baseRef.once("value").then(function(snap){
         attachSyncListener(roomId);
-        if(!snap.exists()){
-          // Brand-new sync room — seed it with whatever this device already has.
+        // Only ever seed the cloud from THIS device's data when there's
+        // actually something worth seeding. A brand-new phone or tablet
+        // connecting for the first time typically has no customers yet (or
+        // old leftover data from testing/setup) — if it were allowed to
+        // "seed" just because the exists-check came back empty (which can
+        // also happen from a permissions hiccup even when the room is NOT
+        // actually empty), it could silently overwrite a shop's real,
+        // current data with nothing or with stale leftovers. Requiring
+        // real local data first makes that impossible.
+        if(!snap.exists() && Object.keys(state.data).length){
           pushFullSnapshotToCloud();
         }
       }).catch(function(){
