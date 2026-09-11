@@ -2497,7 +2497,10 @@
       if(!blob) throw new Error("no-blob");
       var file = new File([blob], "receipt.png", { type:"image/png" });
       if(!navigator.canShare({ files:[file] })){ throw new Error("cannot-share-files"); }
-      return navigator.share({ files:[file], text: caption, title: t("receiptTitle") });
+      // No "text" here on purpose — sending it alongside the file makes
+      // WhatsApp attach a separate text message under the image, which
+      // isn't wanted; the receipt image already carries everything needed.
+      return navigator.share({ files:[file], title: t("receiptTitle") });
     }).catch(function(err){
       if(err && err.name === "AbortError"){ return; } // user cancelled the share sheet, not an error
       // Couldn't share the image for some reason (older device, etc.) —
