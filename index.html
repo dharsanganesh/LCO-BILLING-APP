@@ -2058,7 +2058,13 @@
       };
 
       c.status = "paid";
-      c.lastPaid = periodTo;
+      // Last Paid Date is the bill this payment actually covers/clears —
+      // that's periodFrom, not periodTo. Setting it to periodTo (the same
+      // value as the new due date) made every payment show "Last Paid" and
+      // "Next Due" as the identical date, collapsing the one-month gap
+      // between them that the rest of the app (and every printed receipt)
+      // relies on.
+      c.lastPaid = periodFrom;
       c.dueDate = periodTo;
       c.mode = m.toLowerCase();
       c.collector = collector;
