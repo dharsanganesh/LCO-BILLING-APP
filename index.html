@@ -413,7 +413,7 @@
     <div class="receipt-box" id="receiptPreview"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" id="printBtn">🖨 Print</button>
-      <button class="btn btn-outline" id="shareToPrintBtn">📤 Share to Print App</button>
+      <button class="btn btn-outline" id="shareToPrintBtn">📤 Send Bill Image</button>
       <button class="btn btn-paid" id="sendBtn">📩 Send on WhatsApp</button>
       <button class="btn btn-outline" id="sendSmsBtn">📱 Send SMS</button>
     </div>
@@ -1037,7 +1037,7 @@
       removeBtn:"🗑 Remove", billBtn:"🧾 Generate Bill", saveCustomerBtn:"Save Customer",
       receiptTitle:"Billing Receipt", receiptSub:"Preview before printing or sending",
       printBtn:"🖨 Print", sendBtn:"📩 Send on WhatsApp", sendSmsBtn:"📱 Send SMS", sessionOfficeId:"Office ID",
-      shareToPrintBtn:"📤 Share to Print App",
+      shareToPrintBtn:"📤 Send Bill Image",
       shareNotSupported:"Sharing isn't supported in this browser. Please use the Print button instead, or open this app in Chrome.",
       shareFailed:"Could not prepare the receipt for sharing. Please try the Print button instead.",
       settingsTitle:"Shop Details", settingsSub:"Shown on printed / sent receipts",
@@ -1145,7 +1145,7 @@
       removeBtn:"🗑 நீக்கு", billBtn:"🧾 பில் உருவாக்கு", saveCustomerBtn:"வாடிக்கையாளரை சேமி",
       receiptTitle:"பில் ரசீது", receiptSub:"அச்சிடும் முன் அல்லது அனுப்பும் முன் பார்வையிடவும்",
       printBtn:"🖨 அச்சிடு", sendBtn:"📩 WhatsApp வழியாக அனுப்பு", sendSmsBtn:"📱 SMS அனுப்பு", sessionOfficeId:"ஆஃபீஸ் ஐடி",
-      shareToPrintBtn:"📤 பிரிண்ட் ஆப்பிற்கு பகிர்",
+      shareToPrintBtn:"📤 பில் படத்தை அனுப்பு",
       shareNotSupported:"இந்த உலாவியில் பகிர்வு ஆதரிக்கப்படவில்லை. Print பொத்தானை பயன்படுத்தவும் அல்லது Chrome-ல் திறக்கவும்.",
       shareFailed:"ரசீதை பகிர தயார் செய்ய முடியவில்லை. Print பொத்தானை முயற்சிக்கவும்.",
       settingsTitle:"கடை விவரங்கள்", settingsSub:"ரசீதுகளில் காட்டப்படும்",
@@ -2484,36 +2484,13 @@
     lines.push("- " + (s.shopName || "Cable TV Network") + (s.phone ? (" | " + s.phone) : ""));
     var caption = lines.join("\n");
     var waTextLink = "https://wa.me/" + num + "?text=" + encodeURIComponent(caption);
-
-    // WhatsApp's own web link (wa.me) is the ONLY way any website can jump
-    // straight into ONE SPECIFIC customer's chat automatically using their
-    // saved number — but that link format can only ever carry text, never a
-    // file. There is no way for a website to both auto-pick the right
-    // customer AND hand over the image; WhatsApp itself requires a person
-    // to manually choose who a file goes to, every time, from any app. So:
-    // save the receipt image to this device first (no picker, happens
-    // immediately), then jump straight into the correct customer's chat.
-    // Attaching that just-saved image there (if wanted) is then just
-    // tapping 📎 and picking the most recent photo — not searching for the
-    // contact, which was the actual complaint this replaces.
-    var btnOriginal = btn.textContent;
-    btn.textContent = "…";
-    btn.disabled = true;
-    captureReceiptBlob().then(function(blob){
-      if(!blob) return;
-      var url = URL.createObjectURL(blob);
-      var a = document.createElement("a");
-      a.href = url;
-      a.download = "receipt_" + box + "_" + (btn.getAttribute("data-invoice") || "") + ".png";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
-    }).catch(function(){ /* image save failed — still open the correct chat below */ }).finally(function(){
-      btn.textContent = btnOriginal;
-      btn.disabled = false;
-      window.open(waTextLink, "_blank");
-    });
+    // Deliberately text-only: this button's one job is jumping straight into
+    // the correct customer's chat automatically using their saved number.
+    // Sending the actual bill photo is "Share to Print App" — that one
+    // requires manually picking who receives it (no website can skip that
+    // step for a file, on WhatsApp or anywhere else), so the two stay
+    // separate rather than one button trying to do both at once.
+    window.open(waTextLink, "_blank");
   });
   document.getElementById("sendSmsBtn").addEventListener("click", function(){
     var btn = this;
