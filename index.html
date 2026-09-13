@@ -888,7 +888,9 @@
       <button class="btn btn-outline" id="syncDisconnectBtn">Disconnect</button>
       <button class="btn btn-accent" id="syncConnectBtn">Connect</button>
     </div>
+    <button class="btn btn-outline" id="syncNowBtn" style="width:100%;margin-top:8px;">🔄 Sync Now</button>
     <div class="hint" id="syncHelp" style="margin-top:10px;">Both staff members must paste the exact same Firebase Config and the exact same Sync Code for their data to match.</div>
+    <div class="hint" style="margin-top:6px;">Been working offline (no signal)? Once you have internet again, tap 🔄 Sync Now to push your changes right away — don't just wait for it to happen by itself, especially if the app was sitting in the background for a while.</div>
   </div>
 </div>
 
@@ -1021,6 +1023,7 @@
       syncHelp:"Both devices must paste the exact same Firebase Config and the exact same Sync Code for their data to match.",
       syncInvalidConfig:"Please paste a valid Firebase config (copied from your Firebase project settings).",
       syncNeedRoom:"Please enter a Sync Code.",
+      syncNotConnectedYet:"Not connected yet — fill in the config and Sync Code and tap Connect first.",
       linesLabel:"Lines", editStaffBtn:"Edit", staffNeedsPin:"Please set a PIN for this area manager.",
       lblNewStaffPin:"Area Manager PIN", lblNewStaffLines:"Lines this area manager can access",
       lblOfficePin:"Office Sign-In PIN",
@@ -1129,6 +1132,7 @@
       syncHelp:"இரு சாதனங்களும் ஒரே Firebase கட்டமைப்பு மற்றும் ஒரே சின்க் குறியீட்டை பயன்படுத்த வேண்டும்.",
       syncInvalidConfig:"சரியான Firebase கட்டமைப்பை ஒட்டவும்.",
       syncNeedRoom:"சின்க் குறியீட்டை உள்ளிடவும்.",
+      syncNotConnectedYet:"இன்னும் இணைக்கப்படவில்லை — கட்டமைப்பு மற்றும் சின்க் குறியீட்டை நிரப்பி Connect தட்டவும்.",
       linesLabel:"வரிசைகள்", editStaffBtn:"திருத்து", staffNeedsPin:"இந்த பகுதி மேலாளருக்கு PIN அமைக்கவும்.",
       lblNewStaffPin:"பகுதி மேலாளர் PIN", lblNewStaffLines:"இந்த பகுதி மேலாளர் அணுகக்கூடிய வரிசைகள்",
       lblOfficePin:"அலுவலக உள்நுழைவு PIN",
@@ -3594,6 +3598,25 @@
     syncEnabled = false;
     clearSyncConfig();
     updateSyncStatus("off");
+  });
+  document.getElementById("syncNowBtn").addEventListener("click", function(){
+    var conf = loadSyncConfig();
+    if(!conf || !conf.enabled || !conf.roomId || !fbDb){
+      alert(t("syncNotConnectedYet"));
+      return;
+    }
+    // Detaching and re-attaching forces a brand-new read of the cloud's
+    // current data and re-runs the same merge/re-push logic that normally
+    // only happens on app startup or when the connection silently drops and
+    // reconnects on its own. That silent reconnect can't be relied on —
+    // e.g. a phone that sat offline in the field for a while, with the app
+    // backgrounded, may not resume promptly once signal comes back. This
+    // gives a person a direct, immediate way to push their own changes up
+    // and pull in anyone else's, without needing to fully close and reopen
+    // the app.
+    updateSyncStatus("connecting");
+    detachSyncListeners();
+    attachSyncListener(conf.roomId);
   });
 
   // ---------- Report / Pie chart ----------
